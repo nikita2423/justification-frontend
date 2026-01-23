@@ -8,6 +8,7 @@ import {
   BarChart3,
   X,
 } from "lucide-react";
+import Image from "next/image";
 
 interface SidebarProps {
   mobileMenuOpen: boolean;
@@ -19,8 +20,15 @@ export function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
     <>
       {/* Slim Sidebar */}
       <aside className="w-20 bg-card border-r hidden md:flex flex-col items-center py-4 gap-4">
-        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-          <Package className="w-6 h-6 text-primary" />
+        <div className="w-12 h-12 flex items-center justify-center mb-4">
+          {/* <Package className="w-6 h-6 text-primary" /> */}
+          <Image
+            src="/images/hkscss-logo.svg"
+            alt="HKCSS Logo"
+            width={120}
+            height={80}
+            className="object-contain"
+          />
         </div>
         <nav className="flex flex-col gap-3">
           <button

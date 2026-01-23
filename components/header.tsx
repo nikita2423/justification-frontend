@@ -69,10 +69,10 @@ export function Header({
               </div> */}
               <div>
                 <h1 className="text-lg font-bold text-foreground">
-                  Justification Generator
+                  I&T Fund AI Platform
                 </h1>
                 <p className="text-xs text-muted-foreground">
-                  Data Management & Approval System
+                  Data Management & Justification System
                 </p>
               </div>
             </div>

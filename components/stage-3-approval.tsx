@@ -657,6 +657,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                           />
                         </TableHead>
                         {[
+                          "App_PNam_Mod",
                           "SWD_Ref",
                           "Ref",
                           "App_No",
@@ -674,7 +675,6 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                           "SWD_Off_I",
                           "App_Type",
                           "App_Cat",
-                          "App_PNam_Mod",
                           "Rem_RA",
                           "Recd_EGF",
                           "Recd_PAF",
@@ -717,6 +717,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                           product.id,
                         );
                         const egFields = [
+                          "App_PNam_Mod",
                           "SWD_Ref",
                           "Ref",
                           "App_No",
@@ -734,7 +735,6 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                           "SWD_Off_I",
                           "App_Type",
                           "App_Cat",
-                          "App_PNam_Mod",
                           "Rem_RA",
                           "Recd_EGF",
                           "Recd_PAF",

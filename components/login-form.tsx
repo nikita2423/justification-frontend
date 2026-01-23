@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLogin } from "@/hooks/use-login";
+import Image from "next/image";
 
 const LoginForm = () => {
   const router = useRouter();
@@ -38,15 +39,22 @@ const LoginForm = () => {
     <div className="bg-card rounded-lg border p-8 space-y-6 shadow-lg">
       {/* Logo */}
       <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+        <Image
+          src="/images/hkscss-logo.svg"
+          alt="HKCSS Logo"
+          width={120}
+          height={80}
+          className="object-contain"
+        />
+        {/* <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
           <Package className="w-6 h-6 text-primary" />
-        </div>
+        </div> */}
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground">
-            Justification Suggestor
+            I&T Fund AI Platform
           </h1>
           <p className="text-sm text-muted-foreground">
-            Data Management & Approval System
+            Data Management & Justification System
           </p>
         </div>
       </div>
