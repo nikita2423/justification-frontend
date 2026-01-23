@@ -12,6 +12,7 @@ export async function POST(request: Request) {
     // Forward to backend API
     const backendFormData = new FormData();
     backendFormData.append("file", file, file.name);
+    console.log("PYTHON_BACKEND_URL", PYTHON_BACKEND_URL);
 
     const backendResponse = await fetch(
       `${PYTHON_BACKEND_URL}/extract/application`,
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
         body: backendFormData,
       },
     );
+
+    console.log("Backend response status:", backendResponse);
 
     if (!backendResponse.ok) {
       throw new Error(`Backend API error: ${backendResponse.statusText}`);

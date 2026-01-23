@@ -112,7 +112,7 @@ const LoginForm = () => {
         </p>
         <div className="text-xs bg-muted p-3 rounded-lg space-y-1">
           <p>
-            <span className="font-semibold">Email:</span> nikita.mittal@fasta.ai
+            <span className="font-semibold">Email:</span> user@test.com
           </p>
           <p>
             <span className="font-semibold">Password:</span>{" "}

@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 interface UseApiOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   headers?: Record<string, string>;
+  backendUrl?: string; // Optional backend URL to proxy through
 }
 
 interface ApiResponse<T> {
@@ -25,6 +26,11 @@ export function useApi<T = any>(url: string, options: UseApiOptions = {}) {
       setState({ data: null, error: null, loading: true });
 
       try {
+        // If backendUrl is provided, proxy through Next.js API
+        const finalUrl = options.backendUrl
+          ? `/api/proxy?url=${encodeURIComponent(url)}`
+          : url;
+
         const fetchOptions: RequestInit = {
           method: options.method || "GET",
           headers: {
@@ -33,14 +39,21 @@ export function useApi<T = any>(url: string, options: UseApiOptions = {}) {
           },
         };
 
-        if (body) {
-          fetchOptions.body = JSON.stringify(body);
+        const requestBody: any = body || {};
+
+        // Add backend URL to request if using proxy
+        if (options.backendUrl) {
+          requestBody.backendUrl = options.backendUrl;
+        }
+
+        if (body || options.backendUrl) {
+          fetchOptions.body = JSON.stringify(requestBody);
         }
 
         // Get auth token if available
         const token =
           typeof window !== "undefined"
-            ? localStorage.getItem("accessToken")
+            ? localStorage.getItem("authToken")
             : null;
 
         if (token && !fetchOptions.headers?.Authorization) {
@@ -48,7 +61,7 @@ export function useApi<T = any>(url: string, options: UseApiOptions = {}) {
             `Bearer ${token}`;
         }
 
-        const response = await fetch(url, fetchOptions);
+        const response = await fetch(finalUrl, fetchOptions);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
