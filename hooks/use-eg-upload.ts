@@ -5,7 +5,7 @@ export function useEGUpload() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadEGForm = useCallback(async (file: File, tranche: string) => {
+  const uploadEGForm = useCallback(async (file: File, tranche: string, season: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -13,6 +13,7 @@ export function useEGUpload() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("tranche", tranche);
+      formData.append("season", season);
 
       const response = await fetch("/api/extract/eg", {
         method: "POST",
@@ -25,6 +26,7 @@ export function useEGUpload() {
 
       const data = await response.json();
       data.data["Tranche"] = tranche; // Attach tranche info
+      data.data["Season"] = season; // Attach season info
       setEGFormData(data);
       console.log("EG form data:", data);
 

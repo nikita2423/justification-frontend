@@ -101,6 +101,14 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         ...p,
         season: state.commonSeason,
         tranch: state.commonTranch,
+        // Also update the EG data's Tranche field if egData exists
+        egData: p.egData ? {
+          ...p.egData,
+          data: {
+            ...p.egData.data,
+            Tranche: state.commonTranch,
+          }
+        } : p.egData,
       })),
     })),
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { utils, writeFile } from "xlsx";
 import {
   Edit2,
@@ -14,6 +14,7 @@ import {
   Search,
   ArrowUpDown,
   Download,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -175,18 +176,11 @@ function EditDialog({ product, isOpen, onClose, onSave }: EditDialogProps) {
     return "/";
   }, []);
 
-  const handleOpen = () => {
-    console.log("Product to edit", product);
-    if (product) {
-      // setFormData({
-      //   name: product.name,
-      //   sku: product.sku,
-      //   category: product.category,
-      //   season: product.season,
-      //   tranch: product.tranch,
-      //   description: product.description,
-      //   supplier: product.supplier,
-      // });
+  // Initialize form data when dialog opens or product changes
+  useEffect(() => {
+    if (isOpen && product) {
+      console.log("Initializing edit dialog for product:", product);
+      
       const egData: Record<string, string> = {};
       egFields.forEach((field) => {
         egData[field] = getData(product, field);
@@ -210,7 +204,7 @@ function EditDialog({ product, isOpen, onClose, onSave }: EditDialogProps) {
         description: catData.description || product.description || "",
       });
     }
-  };
+  }, [isOpen, product, getData]);
 
   const handleSave = useCallback(() => {
     const updates: Partial<Product> = {
@@ -243,14 +237,7 @@ function EditDialog({ product, isOpen, onClose, onSave }: EditDialogProps) {
   ]);
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        console.log("Dialog open change:", open);
-        if (isOpen) handleOpen();
-        else onClose();
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Product Details</DialogTitle>
@@ -490,7 +477,7 @@ const egFields = [
 ];
 
 export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
-  const { products, updateProduct, setProducts } = useProductStore();
+  const { products, updateProduct, setProducts, removeProduct } = useProductStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<keyof Product>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -498,6 +485,37 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
   const [confirmedProducts, setConfirmedProducts] = useState<Set<string>>(
     new Set(),
   );
+  const [activeTableTab, setActiveTableTab] = useState<"a_record" | "pa_admin">("a_record");
+
+  const paAdminFields = [
+    "PA_RefL",
+    "PA_Cat",
+    "PA_PName",
+    "PA_Brand",
+    "PA_Mod_No",
+    "TotAmtR",
+    "Prof_Staff",
+    "Typ_Staff",
+    "Staff_Avail",
+    "No_Elderly",
+    "No_Disable",
+    "No_Bene",
+    "Typ_Disability",
+    "PA_Elaborate",
+    "PA_Justify",
+  ];
+
+  const handleDelete = useCallback((productId: string, productName: string) => {
+    if (confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) {
+      removeProduct(productId);
+      // Also remove from confirmed products if it was confirmed
+      setConfirmedProducts((prev) => {
+        const next = new Set(prev);
+        next.delete(productId);
+        return next;
+      });
+    }
+  }, [removeProduct]);
 
   const handleSort = useCallback(
     (field: keyof Product) => {
@@ -674,6 +692,69 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
     writeFile(workbook, filename);
   }, [products]);
 
+  const handleExportARecordOnly = useCallback(() => {
+    // Helper function to get data (same logic as table display)
+    const getData = (product: Product, key: string) => {
+      if (key == "App_Cat") {
+        const egVal = product.applicationData?.data?.["PA_RefL"];
+        if (egVal !== undefined) return egVal;
+      }
+      if (
+        key === "Recd_EGF" ||
+        key === "Recd_PAF" ||
+        key === "Recd_Quo" ||
+        key === "Recd_Cat" ||
+        key === "Req_I_SWD_YN" ||
+        key === "Req_RepSWD_YN" ||
+        key === "RecdCurrWk_YN" ||
+        key === "EGF_Ready_YN" ||
+        key === "EGF_To_EG_YN" ||
+        key === "EG_Reply_YN" ||
+        key === "EGF_To_SWD_YN" ||
+        key === "FUF_Comp_YN"
+      ) {
+        return "Yes";
+      }
+      if (key === "Ret_Rept") {
+        return "NO";
+      }
+      if (key === "DatEntry") {
+        return new Date().toLocaleDateString();
+      }
+
+      const egVal = product.egData?.data?.[key];
+      if (egVal !== undefined) return egVal;
+
+      const appVal = product.applicationData?.data?.[key];
+      if (appVal !== undefined) return appVal;
+
+      return "/";
+    };
+
+    // Main Table Data with EG Fields only
+    const mainTableData = products.map((p) => {
+      const row: Record<string, any> = {};
+      egFields.forEach((field) => {
+        row[field] = getData(p, field);
+      });
+      return row;
+    });
+
+    const workbook = utils.book_new();
+
+    // Add only A_Record_Admin sheet
+    if (mainTableData.length > 0) {
+      const egSheet = utils.json_to_sheet(mainTableData);
+      utils.book_append_sheet(workbook, egSheet, "A_Record_Admin");
+    }
+
+    // Generate filename
+    const filename = `a-record-admin-${new Date().toISOString().split("T")[0]}.xlsx`;
+
+    // Write file
+    writeFile(workbook, filename);
+  }, [products]);
+
   // const handleExportCSV = useCallback(() => {
   //   const headers = [
   //     "Name",
@@ -788,7 +869,16 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                   className="gap-1.5 bg-transparent"
                 >
                   <Download className="w-4 h-4" />
-                  Excel
+                  Excel (All)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportARecordOnly}
+                  className="gap-1.5 bg-transparent"
+                >
+                  <Download className="w-4 h-4" />
+                  A Record Admin
                 </Button>
                 {/* <Button
                   variant="outline"
@@ -814,6 +904,32 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
               </Button>
             </div>
           </div>
+          
+          {/* Table Tabs */}
+          <div className="flex gap-2 border-b mt-4">
+            <button
+              onClick={() => setActiveTableTab("a_record")}
+              className={cn(
+                "px-4 py-2 text-sm font-medium transition-colors",
+                activeTableTab === "a_record"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Record Admin Table
+            </button>
+            <button
+              onClick={() => setActiveTableTab("pa_admin")}
+              className={cn(
+                "px-4 py-2 text-sm font-medium transition-colors",
+                activeTableTab === "pa_admin"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              PA Table
+            </button>
+          </div>
         </CardHeader>
         <CardContent>
           <div
@@ -824,56 +940,21 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-12 fixed-left sticky left-0 bg-muted/50 z-10"></TableHead>
-                  {[
-                    "SWD_Ref",
-                    "Ref",
-                    "App_No",
-                    "Tranche",
-                    "EB_RM",
-                    "NO",
-                    "NO_R",
-                    "Staff",
-                    "D_ReqF_SWD",
-                    "D_PlnT_SWD",
-                    "D_EGF_Out",
-                    "D_EGF_Dead",
-                    "SWD_Off_N",
-                    "SWD_Off_P",
-                    "SWD_Off_I",
-                    "App_Type",
-                    "App_Cat",
-                    "App_PNam_Mod",
-                    "Rem_RA",
-                    "Recd_EGF",
-                    "Recd_PAF",
-                    "Recd_Quo",
-                    "Recd_Cat",
-                    "Ret_Rept",
-                    "MRef",
-                    "Req_I_SWD_YN",
-                    "D_ReqT_SWD",
-                    "Req_RepSWD_YN",
-                    "D_RetF_SWD",
-                    "Rem_Req",
-                    "D_WkRep",
-                    "WkRep_Status",
-                    "WkRep_Rem",
-                    "RecdCurrWk_YN",
-                    "EGF_Ready_YN",
-                    "EGF_To_EG_YN",
-                    "D_EGF_T_EG",
-                    "EG_Reply_YN",
-                    "D_EG_Reply",
-                    "Rem_EG",
-                    "EGF_To_SWD_YN",
-                    "D_EGF_ASWD",
-                    "FUF_Comp_YN",
-                    "DatEntry",
-                  ].map((col) => (
-                    <TableHead key={col} className="whitespace-nowrap px-4">
-                      {col}
-                    </TableHead>
-                  ))}
+                  {activeTableTab === "a_record" ? (
+                    // A_record_admin columns (EG fields)
+                    egFields.map((col) => (
+                      <TableHead key={col} className="whitespace-nowrap px-4">
+                        {col}
+                      </TableHead>
+                    ))
+                  ) : (
+                    // PA_admin columns (Application fields)
+                    paAdminFields.map((col) => (
+                      <TableHead key={col} className="whitespace-nowrap px-4">
+                        {col}
+                      </TableHead>
+                    ))
+                  )}
                   <TableHead className="text-right sticky right-0 bg-muted/50 z-10">
                     Actions
                   </TableHead>
@@ -945,66 +1026,41 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                         </button>
                       </TableCell>
 
-                      {[
-                        "SWD_Ref",
-                        "Ref",
-                        "App_No",
-                        "Tranche",
-                        "EB_RM",
-                        "NO",
-                        "NO_R",
-                        "Staff",
-                        "D_ReqF_SWD",
-                        "D_PlnT_SWD",
-                        "D_EGF_Out",
-                        "D_EGF_Dead",
-                        "SWD_Off_N",
-                        "SWD_Off_P",
-                        "SWD_Off_I",
-                        "App_Type",
-                        "App_Cat",
-                        "App_PNam_Mod",
-                        "Rem_RA",
-                        "Recd_EGF",
-                        "Recd_PAF",
-                        "Recd_Quo",
-                        "Recd_Cat",
-                        "Ret_Rept",
-                        "MRef",
-                        "Req_I_SWD_YN",
-                        "D_ReqT_SWD",
-                        "Req_RepSWD_YN",
-                        "D_RetF_SWD",
-                        "Rem_Req",
-                        "D_WkRep",
-                        "WkRep_Status",
-                        "WkRep_Rem",
-                        "RecdCurrWk_YN",
-                        "EGF_Ready_YN",
-                        "EGF_To_EG_YN",
-                        "D_EGF_T_EG",
-                        "EG_Reply_YN",
-                        "D_EG_Reply",
-                        "Rem_EG",
-                        "EGF_To_SWD_YN",
-                        "D_EGF_ASWD",
-                        "FUF_Comp_YN",
-                        "DatEntry",
-                      ].map((col) => (
-                        <TableCell key={col} className="whitespace-nowrap px-4">
-                          {getData(col)}
-                        </TableCell>
-                      ))}
+                      {activeTableTab === "a_record" ? (
+                        // A_record_admin data (EG fields)
+                        egFields.map((col) => (
+                          <TableCell key={col} className="whitespace-nowrap px-4">
+                            {getData(col)}
+                          </TableCell>
+                        ))
+                      ) : (
+                        // PA_admin data (Application fields)
+                        paAdminFields.map((col) => (
+                          <TableCell key={col} className="whitespace-nowrap px-4">
+                            {getData(col)}
+                          </TableCell>
+                        ))
+                      )}
 
                       <TableCell className="text-right sticky right-0 bg-background z-10">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setEditingProduct(product)}
-                          className="h-8 w-8"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingProduct(product)}
+                            className="h-8 w-8"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(product.id, product.name)}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

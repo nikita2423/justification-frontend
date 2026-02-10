@@ -281,7 +281,8 @@ function ProductUploadCard({
 
   const handleEGUpload = useCallback(
     (file: File) => {
-      uploadEGForm(file, product.tranch)
+      console.log("product", product);
+      uploadEGForm(file, product.tranch, product.season)
         .then((data) => {
           // Automatically set product name to {NO}{NO_R}
           const updates: any = { egData: data };
