@@ -69,6 +69,7 @@ export function useGetCases(initialFilters?: CaseFilters) {
 
     return {
         cases,
+        setCases,
         isLoading,
         error,
         filters,

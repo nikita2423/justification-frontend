@@ -215,7 +215,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   } = useSimilarMatches();
 
   // Fetch cases from API
-  const { cases, isLoading: isLoadingCases, error: casesError, refetch: refetchCases } = useGetCases();
+  const { cases, setCases, isLoading: isLoadingCases, error: casesError, refetch: refetchCases } = useGetCases();
 
   // Update case status and justification
   const { updateCaseStatus, isLoading: isUpdatingCase } = useUpdateCaseStatus();
@@ -579,18 +579,26 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
       const failedUpdates = results.filter((r) => !r || !r.success);
       
       if (failedUpdates.length > 0) {
+        // Fallback: Update local state if API failed
+        setCases((currentCases) => 
+          currentCases.map((c) => 
+            selectedProducts.includes(c.id) 
+              ? { ...c, status: pendingDecision, justification: generatedJustification }
+              : c
+          )
+        );
+
         alert(
-          `Warning: ${failedUpdates.length} case(s) failed to update. Please check the console for details.`
+          `Warning: ${failedUpdates.length} case(s) failed to save to server, but updated locally.`
         );
       } else {
         console.log(`Successfully updated ${results.length} case(s) with ${pendingDecision} status`);
         alert(
           `Successfully ${pendingDecision} ${results.length} case(s) with AI-generated justification.`
         );
+        // Refresh cases list to ensure sync with server
+        await refetchCases();
       }
-
-      // Refresh cases list to show updated statuses
-      await refetchCases();
 
       // Also update local product statuses for backward compatibility
       selectedProducts.forEach((id) => {
@@ -598,7 +606,17 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
       });
     } catch (error) {
       console.error("Error confirming decision:", error);
-      alert("An error occurred while updating cases. Please try again.");
+      
+      // Fallback: Update local state on error
+      setCases((currentCases) => 
+        currentCases.map((c) => 
+          selectedProducts.includes(c.id) 
+            ? { ...c, status: pendingDecision, justification: generatedJustification }
+            : c
+        )
+      );
+
+      alert("Error reaching server. Table updated locally.");
     } finally {
       setIsGeneratingJustification(false);
 
@@ -614,6 +632,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     generatedJustification,
     selectedProducts,
     cases,
+    setCases,
     updateCaseStatus,
     refetchCases,
     updateProduct,
