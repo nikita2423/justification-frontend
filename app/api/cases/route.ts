@@ -13,11 +13,13 @@ export async function GET(request: NextRequest) {
         const caseNumber = searchParams.get('caseNumber');
         const recdEG = searchParams.get('recdEG');
         const categoryId = searchParams.get('categoryId');
+        const userId = searchParams.get('userId');
 
         if (status) filters.status = status as any;
         if (caseNumber) filters.caseNumber = caseNumber;
         if (recdEG !== null) filters.recdEG = recdEG === 'true';
         if (categoryId) filters.categoryId = categoryId;
+        if (userId) filters.userId = userId;
 
         // Build query string for backend
         const queryString = new URLSearchParams(

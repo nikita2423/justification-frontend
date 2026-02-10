@@ -45,6 +45,7 @@ import { useProductStore } from "@/lib/store";
 import { useSimilarMatches } from "@/hooks/use-similar-matches";
 import { useGetCases } from "@/hooks/use-get-cases";
 import { useUpdateCaseStatus } from "@/hooks/use-update-case-status";
+import { useAuth } from "@/lib/auth-context";
 import type {
   Product,
   SimilarJustification,
@@ -214,8 +215,13 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     fetchSimilarMatches,
   } = useSimilarMatches();
 
-  // Fetch cases from API
-  const { cases, setCases, isLoading: isLoadingCases, error: casesError, refetch: refetchCases } = useGetCases();
+  // Get current user
+  const { user } = useAuth();
+
+  // Fetch cases from API filtered by userId
+  const { cases, setCases, isLoading: isLoadingCases, error: casesError, refetch: refetchCases } = useGetCases(
+    user?.id ? { userId: user.id } : undefined
+  );
 
   // Update case status and justification
   const { updateCaseStatus, isLoading: isUpdatingCase } = useUpdateCaseStatus();

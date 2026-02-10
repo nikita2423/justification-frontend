@@ -21,6 +21,7 @@ export function useGetCases(initialFilters?: CaseFilters) {
             if (filtersToUse.caseNumber) queryParams.append('caseNumber', filtersToUse.caseNumber);
             if (filtersToUse.recdEG !== undefined) queryParams.append('recdEG', String(filtersToUse.recdEG));
             if (filtersToUse.categoryId) queryParams.append('categoryId', filtersToUse.categoryId);
+            if (filtersToUse.userId) queryParams.append('userId', filtersToUse.userId);
 
             const queryString = queryParams.toString();
             const url = `/api/cases${queryString ? `?${queryString}` : ''}`;

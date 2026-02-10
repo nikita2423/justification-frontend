@@ -2,6 +2,7 @@ export type StatusType = 'pending' | 'approved' | 'rejected' | 'under_review';
 
 export interface CreateCaseDto {
     caseNumber: string;
+    userId: string;
     status?: StatusType;
     justification?: string;
     recdEG?: boolean;
@@ -21,6 +22,7 @@ export interface CreateCaseResponse {
 export interface Case {
     id: string;
     caseNumber: string;
+    userId: string;
     status: StatusType;
     justification?: string;
     recdEG?: boolean;
@@ -37,6 +39,7 @@ export interface CaseFilters {
     caseNumber?: string;
     recdEG?: boolean;
     categoryId?: string;
+    userId?: string;
 }
 
 export interface GetCasesResponse {

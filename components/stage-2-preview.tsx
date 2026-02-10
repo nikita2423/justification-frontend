@@ -41,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useProductStore } from "@/lib/store";
 import { useCreateCase } from "@/hooks/use-create-case";
+import { useAuth } from "@/lib/auth-context";
 import type { Product } from "@/lib/types";
 
 const fileTypeIcons = {
@@ -481,6 +482,7 @@ const egFields = [
 export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
   const { products, updateProduct, setProducts, removeProduct } = useProductStore();
   const { createCase, isLoading: isCreatingCases, error: createCaseError } = useCreateCase();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<keyof Product>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -601,6 +603,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
 
         const caseData = {
           caseNumber,
+          userId: user?.id || 'unknown',
           status: 'pending' as const,
           recdEG: true,
           catalogueData: product.catalogueData?.data || {},

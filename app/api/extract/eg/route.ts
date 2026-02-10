@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     const backendFormData = new FormData();
     backendFormData.append("file", file, file.name);
     backendFormData.append("tranche", formData.get("tranche") as string);
+    backendFormData.append("season", formData.get("season") as string);
 
     const backendResponse = await fetch(`${PYTHON_BACKEND_URL}/extract/eg`, {
       method: "POST",
