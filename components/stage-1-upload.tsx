@@ -170,6 +170,28 @@ function ProductUploadCard({
     }, 1200);
   };
 
+  // Initialize editable data from product data when component mounts or product data changes
+  useEffect(() => {
+    if (product?.egData?.data) {
+      setEditableEgData(JSON.parse(JSON.stringify(product.egData.data)));
+    }
+    if (product?.applicationData?.data) {
+      setEditableAppData(
+        JSON.parse(JSON.stringify(product.applicationData.data)),
+      );
+    }
+    if (product?.catalogueData?.data?.products?.[0]) {
+      setEditableCatalogueData(
+        JSON.parse(JSON.stringify(product.catalogueData.data.products[0])),
+      );
+    }
+    
+    // If we have uploaded files and data, show the preview automatically
+    if (product?.egData?.data || product?.applicationData?.data || product?.catalogueData?.data) {
+      setShowExtractedPreview(true);
+    }
+  }, [product.id]); // Only run when product ID changes (component mount)
+
   // Handle pending catalogue upload when application data becomes available
   const handleCatalogueUploadWithData = useCallback(
     (file: File) => {
@@ -261,7 +283,14 @@ function ProductUploadCard({
     (file: File) => {
       uploadEGForm(file, product.tranch)
         .then((data) => {
-          onUpdate({ egData: data });
+          // Automatically set product name to {NO}{NO_R}
+          const updates: any = { egData: data };
+          
+          if (data?.data?.NO && data?.data?.NO_R) {
+            updates.name = `${data.data.NO}${data.data.NO_R}`;
+          }
+          
+          onUpdate(updates);
         })
         .catch((err) => {
           console.error("Failed to upload EG form:", err);
@@ -396,41 +425,6 @@ function ProductUploadCard({
 
       {isExpanded && (
         <CardContent className="pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {/* <div className="space-y-2">
-              <Label>SKU</Label>
-              <Input
-                value={product.sku}
-                onChange={(e) => onUpdate({ sku: e.target.value })}
-                placeholder="PRD-001"
-              />
-            </div> */}
-            {/* <div className="space-y-2">
-              <Label>Category</Label>
-              <Input
-                value={product.category}
-                onChange={(e) => onUpdate({ category: e.target.value })}
-                placeholder="Electronics"
-              />
-            </div> */}
-            <div className="space-y-2">
-              <Label>Season</Label>
-              <Input
-                value={product.season || ""}
-                onChange={(e) => onUpdate({ season: e.target.value })}
-                placeholder="e.g., Spring 2026"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Tranch</Label>
-              <Input
-                value={product.tranch || ""}
-                onChange={(e) => onUpdate({ tranch: e.target.value })}
-                placeholder="e.g., Tranch A"
-              />
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {fileTypes.map(({ type, label, icon: Icon, accept }) => {
               const fileInfo = product.files.find((f) => f.type === type);
@@ -586,7 +580,7 @@ function ProductUploadCard({
                   </TableHeader>
                   <TableBody>
                     {/* EG Form Data */}
-                    {egFormData?.data && (
+                    {editableEgData && (
                       <>
                         <TableRow className="bg-muted/20">
                           <TableCell
@@ -842,7 +836,7 @@ function ProductUploadCard({
                     )}
 
                     {/* Application Form Data */}
-                    {applicationFormData?.data && (
+                    {editableAppData && (
                       <>
                         <TableRow className="bg-muted/20">
                           <TableCell
@@ -1115,7 +1109,7 @@ function ProductUploadCard({
                     )}
 
                     {/* Catalogue Data */}
-                    {catalogueData?.data && (
+                    {editableCatalogueData && (
                       <>
                         <TableRow className="bg-muted/20">
                           <TableCell
@@ -1125,8 +1119,8 @@ function ProductUploadCard({
                             Catalogue Data
                           </TableCell>
                         </TableRow>
-                        {catalogueData.data.products &&
-                          catalogueData.data.products.length > 0 && (
+                        {/* {editableCatalogueData.products &&
+                          editableCatalogueData.products.length > 0 && ( */}
                             <>
                               <TableRow>
                                 <TableCell className="text-xs font-medium text-muted-foreground">
@@ -1147,7 +1141,7 @@ function ProductUploadCard({
                                   />
                                 </TableCell>
                               </TableRow>
-                              {catalogueData.data.products[0].model && (
+                              {editableCatalogueData.model && (
                                 <TableRow>
                                   <TableCell className="text-xs font-medium text-muted-foreground">
                                     Model
@@ -1166,7 +1160,7 @@ function ProductUploadCard({
                                   </TableCell>
                                 </TableRow>
                               )}
-                              {catalogueData.data.products[0].product_size && (
+                              {editableCatalogueData.product_size && (
                                 <TableRow>
                                   <TableCell className="text-xs font-medium text-muted-foreground">
                                     Size
@@ -1187,8 +1181,7 @@ function ProductUploadCard({
                                   </TableCell>
                                 </TableRow>
                               )}
-                              {catalogueData.data.products[0]
-                                .usage_capacity && (
+                              {editableCatalogueData.usage_capacity && (
                                 <TableRow>
                                   <TableCell className="text-xs font-medium text-muted-foreground">
                                     Usage Capacity
@@ -1230,7 +1223,7 @@ function ProductUploadCard({
                                 </TableCell>
                               </TableRow>
                             </>
-                          )}
+                          {/* // )} */}
                       </>
                     )}
                   </TableBody>
@@ -1249,8 +1242,17 @@ interface Stage1UploadProps {
 }
 
 export function Stage1Upload({ onNext }: Stage1UploadProps) {
-  const { products, addProduct, updateProduct, removeProduct } =
-    useProductStore();
+  const {
+    products,
+    addProduct,
+    updateProduct,
+    removeProduct,
+    commonSeason,
+    commonTranch,
+    setCommonSeason,
+    setCommonTranch,
+    applyCommonSeasonAndTranch,
+  } = useProductStore();
   const [expandedProducts, setExpandedProducts] = useState<string[]>([]);
 
   const createNewProduct = useCallback(
@@ -1259,8 +1261,8 @@ export function Stage1Upload({ onNext }: Stage1UploadProps) {
       name: "",
       sku: "",
       category: "",
-      season: "",
-      tranch: "",
+      season: commonSeason,
+      tranch: commonTranch,
       description: "",
       supplier: "",
       status: "draft",
@@ -1296,8 +1298,15 @@ export function Stage1Upload({ onNext }: Stage1UploadProps) {
         },
       ],
     }),
-    [],
+    [commonSeason, commonTranch],
   );
+
+  // Auto-apply common season and tranche to all products when they change
+  useEffect(() => {
+    if (products.length > 0) {
+      applyCommonSeasonAndTranch();
+    }
+  }, [commonSeason, commonTranch]);
 
   const handleAddProduct = useCallback(() => {
     const newProduct = createNewProduct();
@@ -1384,6 +1393,72 @@ export function Stage1Upload({ onNext }: Stage1UploadProps) {
           Add Product
         </Button>
       </div>
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="common-season">Season (applies to all products)</Label>
+              <Input
+                id="common-season"
+                value={commonSeason}
+                onChange={(e) => setCommonSeason(e.target.value)}
+                placeholder="e.g., Spring 2026"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="common-tranch">Tranche (applies to all products)</Label>
+              <Input
+                id="common-tranch"
+                value={commonTranch}
+                onChange={(e) => setCommonTranch(e.target.value)}
+                placeholder="e.g., Tranche A"
+              />
+            </div>
+          </div>
+
+      {/* Common Season and Tranche Section */}
+      {/* <Card className="border-primary/20 bg-primary/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            Common Season & Tranche
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Set season and tranche for all products at once
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="common-season">Season</Label>
+              <Input
+                id="common-season"
+                value={commonSeason}
+                onChange={(e) => setCommonSeason(e.target.value)}
+                placeholder="e.g., Spring 2026"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="common-tranch">Tranche</Label>
+              <Input
+                id="common-tranch"
+                value={commonTranch}
+                onChange={(e) => setCommonTranch(e.target.value)}
+                placeholder="e.g., Tranche A"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                onClick={applyCommonSeasonAndTranch}
+                disabled={!commonSeason && !commonTranch}
+                variant="outline"
+                className="w-full gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Apply to All Products
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card> */}
 
       {products.length > 0 && (
         <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">

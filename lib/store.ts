@@ -8,6 +8,8 @@ interface ProductStore {
   justifications: ApprovalJustification[]
   similarJustifications: SimilarJustification[]
   isGeneratingJustification: boolean
+  commonSeason: string
+  commonTranch: string
 
   setStage: (stage: Stage) => void
   addProduct: (product: Product) => void
@@ -20,6 +22,9 @@ interface ProductStore {
   addJustification: (justification: ApprovalJustification) => void
   setSimilarJustifications: (justifications: SimilarJustification[]) => void
   setIsGeneratingJustification: (isGenerating: boolean) => void
+  setCommonSeason: (season: string) => void
+  setCommonTranch: (tranch: string) => void
+  applyCommonSeasonAndTranch: () => void
   resetStore: () => void
 }
 
@@ -30,6 +35,8 @@ const initialState = {
   justifications: [],
   similarJustifications: [],
   isGeneratingJustification: false,
+  commonSeason: "",
+  commonTranch: "",
 }
 
 export const useProductStore = create<ProductStore>((set, get) => ({
@@ -83,6 +90,19 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     set({
       isGeneratingJustification: isGenerating,
     }),
+
+  setCommonSeason: (season) => set({ commonSeason: season }),
+
+  setCommonTranch: (tranch) => set({ commonTranch: tranch }),
+
+  applyCommonSeasonAndTranch: () =>
+    set((state) => ({
+      products: state.products.map((p) => ({
+        ...p,
+        season: state.commonSeason,
+        tranch: state.commonTranch,
+      })),
+    })),
 
   resetStore: () => set(initialState),
 }))

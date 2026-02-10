@@ -7,6 +7,7 @@ import type { Stage } from "@/lib/types";
 interface ProgressStepperProps {
   currentStage: Stage;
   onStageClick?: (stage: Stage) => void;
+  showOnlyCurrentStep?: boolean;
 }
 
 const stages = [
@@ -22,11 +23,17 @@ const stages = [
 export function ProgressStepper({
   currentStage,
   onStageClick,
+  showOnlyCurrentStep = false,
 }: ProgressStepperProps) {
+  // Filter stages based on showOnlyCurrentStep prop
+  const displayStages = showOnlyCurrentStep
+    ? stages.filter((stage) => stage.id === currentStage)
+    : stages;
+
   return (
     <div className="w-full py-6">
       <div className="flex items-center justify-between">
-        {stages.map((stage, index) => {
+        {displayStages.map((stage, index) => {
           const isCompleted = currentStage > stage.id;
           const isCurrent = currentStage === stage.id;
           const isClickable = stage.id <= currentStage;
@@ -75,7 +82,7 @@ export function ProgressStepper({
                 </div>
               </div>
 
-              {index < stages.length - 1 && (
+              {index < displayStages.length - 1 && (
                 <div
                   className={cn(
                     "h-0.5 flex-1 mx-4 transition-colors duration-300",

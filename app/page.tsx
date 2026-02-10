@@ -64,6 +64,7 @@ function ProductManagementPage() {
             <ProgressStepper
               currentStage={currentStage}
               onStageClick={handleStageClick}
+              showOnlyCurrentStep={currentStage === 3}
             />
           </div>
         </div>

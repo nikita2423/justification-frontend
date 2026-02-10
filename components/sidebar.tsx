@@ -7,8 +7,11 @@ import {
   Settings,
   BarChart3,
   X,
+  Upload,
+  CheckCircle,
 } from "lucide-react";
 import Image from "next/image";
+import { useProductStore } from "@/lib/store";
 
 interface SidebarProps {
   mobileMenuOpen: boolean;
@@ -16,6 +19,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
+  const { currentStage, setStage } = useProductStore();
+
   return (
     <>
       {/* Slim Sidebar */}
@@ -37,6 +42,32 @@ export function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
           >
             <LayoutDashboard className="w-5 h-5" />
           </button>
+          
+          {/* Quick Navigation */}
+          <div className="border-t pt-3 mt-3 flex flex-col gap-3">
+            <button
+              title="Extraction (Step 1)"
+              onClick={() => setStage(1)}
+              className={`p-3 rounded-lg transition-colors ${
+                currentStage === 1
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-accent text-foreground"
+              }`}
+            >
+              <Upload className="w-5 h-5" />
+            </button>
+            <button
+              title="Justification (Step 3)"
+              onClick={() => setStage(3)}
+              className={`p-3 rounded-lg transition-colors ${
+                currentStage === 3
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-accent text-foreground"
+              }`}
+            >
+              <CheckCircle className="w-5 h-5" />
+            </button>
+          </div>
           {/* <button
             title="Products"
             className="p-3 rounded-lg hover:bg-accent transition-colors text-foreground"
@@ -76,7 +107,43 @@ export function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
                 <LayoutDashboard className="w-4 h-4" />
                 Dashboard
               </button>
-              <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-accent text-sm font-medium text-foreground">
+              
+              {/* Quick Navigation Section */}
+              <div className="pt-4 mt-4 border-t space-y-2">
+                <p className="px-4 text-xs font-semibold text-muted-foreground mb-2">
+                  QUICK ACCESS
+                </p>
+                <button
+                  onClick={() => {
+                    setStage(1);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
+                    currentStage === 1
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent text-foreground"
+                  }`}
+                >
+                  <Upload className="w-4 h-4" />
+                  Extraction (Step 1)
+                </button>
+                <button
+                  onClick={() => {
+                    setStage(3);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
+                    currentStage === 3
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent text-foreground"
+                  }`}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Justification (Step 3)
+                </button>
+              </div>
+              
+              {/* <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-accent text-sm font-medium text-foreground">
                 <BoxesIcon className="w-4 h-4" />
                 Products
               </button>
@@ -87,7 +154,7 @@ export function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
               <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-accent text-sm font-medium text-foreground">
                 <BarChart3 className="w-4 h-4" />
                 Reports
-              </button>
+              </button> */}
             </nav>
           </aside>
         </div>
