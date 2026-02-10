@@ -5,6 +5,7 @@ import { ProgressStepper } from "@/components/progress-stepper";
 import { Stage1Upload } from "@/components/stage-1-upload";
 import { Stage2Preview } from "@/components/stage-2-preview";
 import { Stage3Approval } from "@/components/stage-3-approval";
+import { Dashboard } from "@/components/dashboard";
 import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -12,7 +13,7 @@ import { useProductStore } from "@/lib/store";
 import type { Stage } from "@/lib/types";
 
 function ProductManagementPage() {
-  const { currentStage, setStage, resetStore, products } = useProductStore();
+  const { currentStage, setStage, resetStore, products, workflowMode, setWorkflowMode } = useProductStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleStageClick = useCallback(
@@ -40,6 +41,22 @@ function ProductManagementPage() {
     resetStore();
   }, [resetStore]);
 
+  const handleSelectWorkflow = useCallback((mode: 'full' | 'direct') => {
+    setWorkflowMode(mode);
+    if (mode === 'direct') {
+      // Skip directly to stage 3 (Justification)
+      setStage(3);
+    } else {
+      // Start from stage 1 (Upload)
+      setStage(1);
+    }
+  }, [setWorkflowMode, setStage]);
+
+  const handleBackToDashboard = useCallback(() => {
+    setWorkflowMode(null);
+    setStage(1);
+  }, [setWorkflowMode, setStage]);
+
   const approvedCount = products.filter((p) => p.status === "approved").length;
   const rejectedCount = products.filter((p) => p.status === "rejected").length;
 
@@ -55,30 +72,46 @@ function ProductManagementPage() {
           mobileMenuOpen={mobileMenuOpen}
           setMobileMenuOpen={setMobileMenuOpen}
           products={products}
-          resetStore={resetStore}
+          resetStore={handleBackToDashboard}
         />
 
-        {/* Progress Stepper */}
-        <div className="border-b bg-card/30">
-          <div className="px-4">
-            <ProgressStepper
-              currentStage={currentStage}
-              onStageClick={handleStageClick}
-              showOnlyCurrentStep={currentStage === 3}
-            />
-          </div>
-        </div>
+        {/* Show Dashboard if no workflow selected */}
+        {!workflowMode && (
+          <main className="flex-1 px-4 py-8">
+            <Dashboard onSelectWorkflow={handleSelectWorkflow} />
+          </main>
+        )}
 
-        {/* Main Content */}
-        <main className="flex-1 px-4 py-8">
-          {currentStage === 1 && <Stage1Upload onNext={handleNext} />}
-          {currentStage === 2 && (
-            <Stage2Preview onNext={handleNext} onBack={handleBack} />
-          )}
-          {currentStage === 3 && (
-            <Stage3Approval onBack={handleBack} onComplete={handleComplete} />
-          )}
-        </main>
+        {/* Show Workflow Content */}
+        {workflowMode && (
+          <>
+            {/* Progress Stepper - Only show for full workflow */}
+            {workflowMode === 'full' && (
+              <div className="border-b bg-card/30">
+                <div className="px-4">
+                  <ProgressStepper
+                    currentStage={currentStage}
+                    onStageClick={handleStageClick}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Main Content */}
+            <main className="flex-1 px-4 py-8">
+              {currentStage === 1 && <Stage1Upload onNext={handleNext} />}
+              {currentStage === 2 && (
+                <Stage2Preview onNext={handleNext} onBack={handleBack} />
+              )}
+              {currentStage === 3 && (
+                <Stage3Approval 
+                  onBack={workflowMode === 'full' ? handleBack : handleBackToDashboard} 
+                  onComplete={handleComplete} 
+                />
+              )}
+            </main>
+          </>
+        )}
 
         {/* Footer */}
         <footer className="border-t py-4 mt-auto">

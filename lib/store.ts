@@ -10,6 +10,7 @@ interface ProductStore {
   isGeneratingJustification: boolean
   commonSeason: string
   commonTranch: string
+  workflowMode: 'full' | 'direct' | null
 
   setStage: (stage: Stage) => void
   addProduct: (product: Product) => void
@@ -25,6 +26,7 @@ interface ProductStore {
   setCommonSeason: (season: string) => void
   setCommonTranch: (tranch: string) => void
   applyCommonSeasonAndTranch: () => void
+  setWorkflowMode: (mode: 'full' | 'direct' | null) => void
   resetStore: () => void
 }
 
@@ -37,6 +39,7 @@ const initialState = {
   isGeneratingJustification: false,
   commonSeason: "",
   commonTranch: "",
+  workflowMode: null as 'full' | 'direct' | null,
 }
 
 export const useProductStore = create<ProductStore>((set, get) => ({
@@ -111,6 +114,8 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         } : p.egData,
       })),
     })),
+
+  setWorkflowMode: (mode) => set({ workflowMode: mode }),
 
   resetStore: () => set(initialState),
 }))

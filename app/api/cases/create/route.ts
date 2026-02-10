@@ -1,0 +1,86 @@
+import { NEXT_PUBLIC_API_URL } from "@/lib/utils";
+import { NextRequest, NextResponse } from "next/server";
+import type { CreateCaseDto, CreateCaseResponse } from "../types";
+
+export async function POST(request: NextRequest) {
+    try {
+        const body: CreateCaseDto = await request.json();
+
+        // Validate required fields
+        if (!body.caseNumber) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "Case number is required"
+                } as CreateCaseResponse,
+                { status: 400 }
+            );
+        }
+
+        // Validate that at least one data type is provided
+        if (!body.catalogueData && !body.egData && !body.applicationData) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "At least one of catalogueData, egData, or applicationData must be provided"
+                } as CreateCaseResponse,
+                { status: 400 }
+            );
+        }
+
+        console.log("Creating case with data:", {
+            caseNumber: body.caseNumber,
+            status: body.status,
+            hasCatalogueData: !!body.catalogueData,
+            hasEgData: !!body.egData,
+            hasApplicationData: !!body.applicationData,
+        });
+
+        // Forward to backend API
+        const backendResponse = await fetch(
+            `${NEXT_PUBLIC_API_URL}/cases/create`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+            }
+        );
+
+        console.log("Backend response status:", backendResponse.status);
+
+        if (!backendResponse.ok) {
+            const errorText = await backendResponse.text();
+            console.error("Backend API error:", errorText);
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: `Backend API error: ${backendResponse.statusText}`
+                } as CreateCaseResponse,
+                { status: backendResponse.status }
+            );
+        }
+
+        const result = await backendResponse.json();
+
+        return NextResponse.json({
+            success: true,
+            caseId: result.id || result.caseId,
+            message: "Case created successfully",
+            ...result,
+        } as CreateCaseResponse);
+
+    } catch (error) {
+        console.error("Error creating case:", error);
+
+        return NextResponse.json(
+            {
+                success: false,
+                error: error instanceof Error ? error.message : "Failed to create case"
+            } as CreateCaseResponse,
+            { status: 500 }
+        );
+    }
+}

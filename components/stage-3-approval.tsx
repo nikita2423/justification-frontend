@@ -16,6 +16,8 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,11 +43,14 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useProductStore } from "@/lib/store";
 import { useSimilarMatches } from "@/hooks/use-similar-matches";
+import { useGetCases } from "@/hooks/use-get-cases";
+import { useUpdateCaseStatus } from "@/hooks/use-update-case-status";
 import type {
   Product,
   SimilarJustification,
   SimilarCaseAnalysis,
 } from "@/lib/types";
+import type { Case } from "@/app/api/cases/types";
 
 // Mock AI justification generation
 const generateJustification = async (
@@ -209,6 +214,13 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     fetchSimilarMatches,
   } = useSimilarMatches();
 
+  // Fetch cases from API
+  const { cases, isLoading: isLoadingCases, error: casesError, refetch: refetchCases } = useGetCases();
+
+  // Update case status and justification
+  const { updateCaseStatus, isLoading: isUpdatingCase } = useUpdateCaseStatus();
+
+  console.log("Cases from API:", cases);
   console.log("Products in Stage3Approval:", products);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -219,6 +231,13 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   const [similarCaseAnalysis, setSimilarCaseAnalysis] =
     useState<SimilarCaseAnalysis | null>(null);
   const [isLoadingSimilarCases, setIsLoadingSimilarCases] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // Clear similar cases data when product selection changes
   useEffect(() => {
@@ -248,20 +267,35 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     setSimilarCaseAnalysis(null);
 
     try {
-      // Use the first selected product's EG data as the reference
-      const firstProduct = selectedProductObjects[0];
-      if (!firstProduct) return;
+      // Get the first selected case
+      const selectedCaseId = selectedProducts[0];
+      const selectedCase = cases.find((c) => c.id === selectedCaseId);
+      
+      if (!selectedCase) {
+        console.error("Selected case not found");
+        return;
+      }
 
-      const egData = firstProduct.egData?.data || {};
-      const applicationData = firstProduct.applicationData?.data || {};
-      const appCat = applicationData.PA_Cat || "";
-      const description =
-        firstProduct.catalogueData?.data?.products[0]?.description || "";
+      console.log("Selected case for similar matches:", selectedCase);
+
+      // Extract product information from catalogueData
+      const productInfo = selectedCase.catalogueData?.products?.[0];
+      const productName = productInfo?.product_name || "";
+      const description = productInfo?.description || selectedCase.catalogueData?.description || "";
+      
+      // Extract category from applicationData
+      const category = selectedCase.applicationData?.PA_Cat || selectedCase.categoryId || "";
+      
+      console.log("Searching for similar cases with:", {
+        productName,
+        category,
+        description: description.substring(0, 100) + "...",
+      });
 
       // Call the similar matches API
       await fetchSimilarMatches({
         item: {
-          PA_Cat: appCat,
+          PA_Cat: category,
           desc: description,
         },
         srcField: "PA_Cat",
@@ -271,7 +305,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
         descriptionField: "desc",
       });
 
-      console.log("matches", matches);
+      console.log("Similar matches found:", matches);
 
       // Transform API results to similar justifications format
       const transformedCases: SimilarJustification[] = matches.map((match) => {
@@ -326,7 +360,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     }
   }, [
     selectedProducts,
-    selectedProductObjects,
+    cases,
     fetchSimilarMatches,
     matches?.length,
     setSimilarJustifications,
@@ -393,21 +427,29 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
         const justifications: string[] = [];
         const allSimilarJustifications: SimilarJustification[] = [];
 
-        // Process each selected product
-        for (const productId of selectedProducts) {
-          const product = products.find((p) => p.id === productId);
-          if (!product) continue;
+        // Process each selected case
+        for (const caseId of selectedProducts) {
+          const selectedCase = cases.find((c) => c.id === caseId);
+          if (!selectedCase) continue;
 
-          // Fetch similar matches for this product
-          const applicationData = product.applicationData?.data || {};
-          const appCat = applicationData.PA_Cat || "";
-          const description =
-            product.catalogueData?.data?.products[0]?.description || "";
+          // Extract product information from catalogueData
+          const productInfo = selectedCase.catalogueData?.products?.[0];
+          const productName = productInfo?.product_name || "";
+          const description = productInfo?.description || selectedCase.catalogueData?.description || "";
+          
+          // Extract category from applicationData
+          const category = selectedCase.applicationData?.PA_Cat || selectedCase.categoryId || "";
 
+          console.log(`Generating justification for case ${selectedCase.caseNumber}:`, {
+            productName,
+            category,
+          });
+
+          // Fetch similar matches for this case
           try {
             await fetchSimilarMatches({
               item: {
-                PA_Cat: appCat,
+                PA_Cat: category,
                 desc: description,
               },
               srcField: "PA_Cat",
@@ -418,12 +460,12 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
             });
           } catch (err) {
             console.error(
-              `Failed to fetch similar matches for ${product.name}`,
+              `Failed to fetch similar matches for ${productName}`,
               err,
             );
           }
 
-          // Call justification API for this product
+          // Call justification API for this case
           const similarMatches =
             matches
               ?.filter((c) => c.similarity > 0.5)
@@ -435,8 +477,8 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                 Desc: c.metadata?.RefL_Des || "",
               })) || [];
 
-          const currentCase = product.catalogueData?.data?.products;
-          const appData = product.applicationData?.data || {};
+          const currentCase = selectedCase.catalogueData?.products;
+          const appData = selectedCase.applicationData || {};
 
           try {
             const response = await fetch("/api/suggest/justification", {
@@ -457,26 +499,38 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
               justifications.push(result?.data?.justification || "");
             } else {
               // Fallback to mock if API fails
+              const mockProduct = {
+                id: selectedCase.id,
+                name: productName,
+                sku: selectedCase.caseNumber,
+                category: category,
+              } as Product;
               const justification = await generateJustification(
-                [product],
+                [mockProduct],
                 decision,
               );
               justifications.push(justification);
             }
           } catch (error) {
             console.error(
-              `Error generating justification for ${product.name}:`,
+              `Error generating justification for ${productName}:`,
               error,
             );
+            const mockProduct = {
+              id: selectedCase.id,
+              name: productName,
+              sku: selectedCase.caseNumber,
+              category: category,
+            } as Product;
             const justification = await generateJustification(
-              [product],
+              [mockProduct],
               decision,
             );
             justifications.push(justification);
           }
         }
 
-        // Use justification from first product for display
+        // Use justification from first case for display
         setGeneratedJustification(justifications[0] || "");
       } finally {
         setIsGeneratingJustification(false);
@@ -484,7 +538,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     },
     [
       selectedProducts,
-      products,
+      cases,
       fetchSimilarMatches,
       matches,
       setIsGeneratingJustification,
@@ -493,64 +547,62 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   );
 
   const handleConfirmDecision = useCallback(async () => {
-    if (!pendingDecision) return;
+    if (!pendingDecision || !generatedJustification) return;
 
     try {
       setIsGeneratingJustification(true);
 
-      // Prepare similar matches data (filter by similarity > 0.7)
-      // const similarMatches =
-      //   similarCaseAnalysis?.cases
-      //     .filter((c) => c.similarity > 0.5)
-      //     .map((c) => ({
-      //       Justify: c.justification,
-      //       Prod_Name: c.productName,
-      //       Status: c.approvalStatus,
-      //       Model_Code: c.metadata?.Model_Code || "",
-      //       Desc: c.metadata?.RefL_Des || "",
-      //     })) || [];
+      console.log(`Confirming ${pendingDecision} decision for ${selectedProducts.length} case(s)`);
 
-      // // Prepare current case data from first selected product
-      // const firstProduct = selectedProductObjects[0];
-      // const currentCase = firstProduct.catalogueData?.data?.products;
+      // Update each selected case with status and justification
+      const updatePromises = selectedProducts.map(async (caseId) => {
+        const selectedCase = cases.find((c) => c.id === caseId);
+        if (!selectedCase) {
+          console.warn(`Case ${caseId} not found`);
+          return null;
+        }
 
-      // // Prepare application data
-      // const applicationData = firstProduct.applicationData?.data || {};
+        console.log(`Updating case ${selectedCase.caseNumber}:`, {
+          status: pendingDecision,
+          justification: generatedJustification.substring(0, 100) + "...",
+        });
 
-      // // Call the justification suggestion API via Next.js route
-      // const response = await fetch("/api/suggest/justification", {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify({
-      //     similar_matches: similarMatches,
-      //     current_case: currentCase,
-      //     application_data: applicationData,
-      //   }),
-      // });
+        return updateCaseStatus(caseId, {
+          status: pendingDecision,
+          justification: generatedJustification,
+        });
+      });
 
-      // if (response.ok) {
-      //   const result = await response.json();
-      //   console.log("Justification suggestion:", result);
-      //   // Optionally update the generated justification with API response
-      //   if (result?.data?.justification) {
-      //     setGeneratedJustification(result.justification);
-      //   }
-      // } else {
-      //   console.warn("Justification API call failed, proceeding with decision");
-      // }
-    } catch (error) {
-      console.error("Error calling justification API:", error);
-      // Continue with decision even if API fails
-    } finally {
-      setIsGeneratingJustification(false);
+      const results = await Promise.all(updatePromises);
 
-      // Update product statuses
+      // Check for failures
+      const failedUpdates = results.filter((r) => !r || !r.success);
+      
+      if (failedUpdates.length > 0) {
+        alert(
+          `Warning: ${failedUpdates.length} case(s) failed to update. Please check the console for details.`
+        );
+      } else {
+        console.log(`Successfully updated ${results.length} case(s) with ${pendingDecision} status`);
+        alert(
+          `Successfully ${pendingDecision} ${results.length} case(s) with AI-generated justification.`
+        );
+      }
+
+      // Refresh cases list to show updated statuses
+      await refetchCases();
+
+      // Also update local product statuses for backward compatibility
       selectedProducts.forEach((id) => {
         updateProduct(id, { status: pendingDecision });
       });
+    } catch (error) {
+      console.error("Error confirming decision:", error);
+      alert("An error occurred while updating cases. Please try again.");
+    } finally {
+      setIsGeneratingJustification(false);
 
+      // Clear state
       clearSelection();
       setGeneratedJustification("");
       setSimilarJustifications([]);
@@ -559,12 +611,15 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     }
   }, [
     pendingDecision,
+    generatedJustification,
     selectedProducts,
-    selectedProductObjects,
+    cases,
+    updateCaseStatus,
+    refetchCases,
     updateProduct,
     clearSelection,
     setSimilarJustifications,
-    similarCaseAnalysis,
+    setIsGeneratingJustification,
   ]);
 
   const handleSelectAll = useCallback(() => {
@@ -621,27 +676,53 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Product Selection Table */}
+        {/* Cases Selection Table */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <CardTitle className="text-lg">Pending Products</CardTitle>
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-lg">Pending Cases</CardTitle>
+                  {isLoadingCases && (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search..."
+                      placeholder="Search cases..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-9 h-9"
                     />
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={refetchCases}
+                    disabled={isLoadingCases}
+                    className="gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isLoadingCases ? 'animate-spin' : ''}`} />
+                  </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {filteredProducts.length > 0 ? (
+              {casesError && (
+                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4">
+                  <p className="font-semibold">Error loading cases</p>
+                  <p className="text-sm">{casesError}</p>
+                </div>
+              )}
+
+              {isLoadingCases ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <span className="ml-3 text-muted-foreground">Loading cases...</span>
+                </div>
+              ) : cases.length > 0 ? (
                 <div className="rounded-lg border overflow-hidden overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -649,17 +730,27 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                         <TableHead className="w-12 sticky left-0 bg-muted/50 z-10">
                           <Checkbox
                             checked={
-                              selectedProducts.length ===
-                                filteredProducts.length &&
-                              filteredProducts.length > 0
+                              selectedProducts.length === cases.length &&
+                              cases.length > 0
                             }
                             onCheckedChange={handleSelectAll}
                           />
                         </TableHead>
+                        {/* Priority columns first */}
+                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                          Case Number
+                        </TableHead>
+                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                          Status
+                        </TableHead>
+                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                          Product Name
+                        </TableHead>
+                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                          Ref No
+                        </TableHead>
+                        {/* Other EG data columns */}
                         {[
-                          "App_PNam_Mod",
-                          "SWD_Ref",
-                          "Ref",
                           "App_No",
                           "Tranche",
                           "EB_RM",
@@ -712,103 +803,150 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredProducts.map((product) => {
-                        const isSelected = selectedProducts.includes(
-                          product.id,
-                        );
-                        const egFields = [
-                          "App_PNam_Mod",
-                          "SWD_Ref",
-                          "Ref",
-                          "App_No",
-                          "Tranche",
-                          "EB_RM",
-                          "NO",
-                          "NO_R",
-                          "Staff",
-                          "D_ReqF_SWD",
-                          "D_PlnT_SWD",
-                          "D_EGF_Out",
-                          "D_EGF_Dead",
-                          "SWD_Off_N",
-                          "SWD_Off_P",
-                          "SWD_Off_I",
-                          "App_Type",
-                          "App_Cat",
-                          "Rem_RA",
-                          "Recd_EGF",
-                          "Recd_PAF",
-                          "Recd_Quo",
-                          "Recd_Cat",
-                          "Ret_Rept",
-                          "MRef",
-                          "Req_I_SWD_YN",
-                          "D_ReqT_SWD",
-                          "Req_RepSWD_YN",
-                          "D_RetF_SWD",
-                          "Rem_Req",
-                          "D_WkRep",
-                          "WkRep_Status",
-                          "WkRep_Rem",
-                          "RecdCurrWk_YN",
-                          "EGF_Ready_YN",
-                          "EGF_To_EG_YN",
-                          "D_EGF_T_EG",
-                          "EG_Reply_YN",
-                          "D_EG_Reply",
-                          "Rem_EG",
-                          "EGF_To_SWD_YN",
-                          "D_EGF_ASWD",
-                          "FUF_Comp_YN",
-                          "DatEntry",
-                        ];
-                        const getData = (key: string) => {
-                          const egVal = product.egData?.data?.[key];
-                          if (egVal !== undefined) return egVal;
-                          return "—";
-                        };
+                      {cases
+                        .filter((caseItem) => {
+                          // Filter by search query
+                          const searchLower = searchQuery.toLowerCase();
+                          const productName = caseItem.egData?.App_PNam_Mod || caseItem.applicationData?.PA_PName || "";
+                          return (
+                            caseItem.caseNumber.toLowerCase().includes(searchLower) ||
+                            productName.toLowerCase().includes(searchLower)
+                          );
+                        })
+                        .map((caseItem) => {
+                          const isSelected = selectedProducts.includes(caseItem.id);
+                          
+                          // Extract product name from egData or applicationData
+                          const productName = caseItem.egData?.App_PNam_Mod || 
+                                            caseItem.applicationData?.PA_PName || 
+                                            "—";
+                          
+                          // Extract ref number from egData
+                          const refNo = caseItem.egData?.Ref || 
+                                       caseItem.egData?.SWD_Ref || 
+                                       "—";
 
-                        return (
-                          <TableRow
-                            key={product.id}
-                            className={cn(
-                              "cursor-pointer transition-colors",
-                              isSelected && "bg-primary/5",
-                            )}
-                            onClick={() => handleSelectProduct(product.id)}
-                          >
-                            <TableCell
-                              className="sticky left-0 bg-background z-10"
-                              onClick={(e) => e.stopPropagation()}
+                          const getData = (key: string) => {
+                            const egVal = caseItem.egData?.[key];
+                            if (egVal !== undefined && egVal !== null && egVal !== "") return egVal;
+                            return "—";
+                          };
+
+                          const statusColors = {
+                            pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
+                            approved: "bg-green-100 text-green-800 border-green-300",
+                            rejected: "bg-red-100 text-red-800 border-red-300",
+                            under_review: "bg-blue-100 text-blue-800 border-blue-300",
+                          };
+
+                          return (
+                            <TableRow
+                              key={caseItem.id}
+                              className={cn(
+                                "cursor-pointer transition-colors",
+                                isSelected && "bg-primary/5",
+                              )}
+                              onClick={() => handleSelectProduct(caseItem.id)}
                             >
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() =>
-                                  handleSelectProduct(product.id)
-                                }
-                              />
-                            </TableCell>
-                            {egFields.map((col) => (
                               <TableCell
-                                key={col}
-                                className="whitespace-nowrap px-4"
+                                className="sticky left-0 bg-background z-10"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                {getData(col)}
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() =>
+                                    handleSelectProduct(caseItem.id)
+                                  }
+                                />
                               </TableCell>
-                            ))}
-                          </TableRow>
-                        );
-                      })}
+                              {/* Priority columns */}
+                              <TableCell className="font-medium font-mono whitespace-nowrap px-4 bg-primary/5">
+                                {caseItem.caseNumber}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap px-4 bg-primary/5">
+                                <Badge
+                                  variant="outline"
+                                  className={statusColors[caseItem.status]}
+                                >
+                                  {caseItem.status.replace('_', ' ').toUpperCase()}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-medium whitespace-nowrap px-4 bg-primary/5">
+                                {productName}
+                              </TableCell>
+                              <TableCell className="font-mono whitespace-nowrap px-4 bg-primary/5">
+                                {refNo}
+                              </TableCell>
+                              {/* Other EG data columns */}
+                              {[
+                                "App_No",
+                                "Tranche",
+                                "EB_RM",
+                                "NO",
+                                "NO_R",
+                                "Staff",
+                                "D_ReqF_SWD",
+                                "D_PlnT_SWD",
+                                "D_EGF_Out",
+                                "D_EGF_Dead",
+                                "SWD_Off_N",
+                                "SWD_Off_P",
+                                "SWD_Off_I",
+                                "App_Type",
+                                "App_Cat",
+                                "Rem_RA",
+                                "Recd_EGF",
+                                "Recd_PAF",
+                                "Recd_Quo",
+                                "Recd_Cat",
+                                "Ret_Rept",
+                                "MRef",
+                                "Req_I_SWD_YN",
+                                "D_ReqT_SWD",
+                                "Req_RepSWD_YN",
+                                "D_RetF_SWD",
+                                "Rem_Req",
+                                "D_WkRep",
+                                "WkRep_Status",
+                                "WkRep_Rem",
+                                "RecdCurrWk_YN",
+                                "EGF_Ready_YN",
+                                "EGF_To_EG_YN",
+                                "D_EGF_T_EG",
+                                "EG_Reply_YN",
+                                "D_EG_Reply",
+                                "Rem_EG",
+                                "EGF_To_SWD_YN",
+                                "D_EGF_ASWD",
+                                "FUF_Comp_YN",
+                                "DatEntry",
+                              ].map((col) => (
+                                <TableCell
+                                  key={col}
+                                  className="whitespace-nowrap px-4"
+                                >
+                                  {getData(col)}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          );
+                        })}
                     </TableBody>
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <CheckCircle2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-medium">No pending products</p>
-                  <p className="text-sm">All products have been processed</p>
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <FileText className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No pending cases</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    There are no cases pending review. Upload products in Stage 1 to create new cases.
+                  </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
 
               {selectedProducts.length > 0 && (
                 <div className="mt-4 p-4 bg-muted/50 rounded-lg">
@@ -858,8 +996,8 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            {/* </CardContent>
+          </Card> */}
 
           {isLoadingSimilarCases && (
             <Card>
@@ -1005,9 +1143,24 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                         className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-medium text-sm">
-                            {caseItem.productName}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">
+                              {caseItem.productName}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleCopy(caseItem.id, caseItem.justification)}
+                              title="Copy Justification"
+                            >
+                              {copiedId === caseItem.id ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">
                               {Math.round(caseItem.similarity * 100)}% match
@@ -1161,9 +1314,26 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                     className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm">
-                        {similar.productName}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {similar.productName}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() =>
+                            handleCopy(similar.id, similar.justification)
+                          }
+                          title="Copy Justification"
+                        >
+                          {copiedId === similar.id ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Copy className="h-3 w-3 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
                       <Badge
                         variant={
                           similar.decision === "approved"

@@ -1,0 +1,57 @@
+export type StatusType = 'pending' | 'approved' | 'rejected' | 'under_review';
+
+export interface CreateCaseDto {
+    caseNumber: string;
+    status?: StatusType;
+    justification?: string;
+    recdEG?: boolean;
+    catalogueData?: Record<string, any>;
+    egData?: Record<string, any>;
+    applicationData?: Record<string, any>;
+    categoryId?: string;
+}
+
+export interface CreateCaseResponse {
+    success: boolean;
+    caseId?: string;
+    message?: string;
+    error?: string;
+}
+
+export interface Case {
+    id: string;
+    caseNumber: string;
+    status: StatusType;
+    justification?: string;
+    recdEG?: boolean;
+    catalogueData?: Record<string, any>;
+    egData?: Record<string, any>;
+    applicationData?: Record<string, any>;
+    categoryId?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CaseFilters {
+    status?: StatusType;
+    caseNumber?: string;
+    recdEG?: boolean;
+    categoryId?: string;
+}
+
+export interface GetCasesResponse {
+    success: boolean;
+    cases?: Case[];
+    error?: string;
+}
+
+export interface UpdateCaseStatusAndJustificationDto {
+    status?: 'approved' | 'rejected';
+    justification?: string;
+}
+
+export interface UpdateCaseResponse {
+    success: boolean;
+    case?: Case;
+    error?: string;
+}

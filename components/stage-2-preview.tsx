@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   Download,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +40,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useProductStore } from "@/lib/store";
+import { useCreateCase } from "@/hooks/use-create-case";
 import type { Product } from "@/lib/types";
 
 const fileTypeIcons = {
@@ -478,6 +480,7 @@ const egFields = [
 
 export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
   const { products, updateProduct, setProducts, removeProduct } = useProductStore();
+  const { createCase, isLoading: isCreatingCases, error: createCaseError } = useCreateCase();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<keyof Product>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -579,15 +582,61 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
     [editingProduct, updateProduct],
   );
 
-  const handleProceed = useCallback(() => {
-    // Mark confirmed products as pending_review
-    products.forEach((p) => {
-      if (confirmedProducts.has(p.id)) {
-        updateProduct(p.id, { status: "pending_review" });
+  const handleProceed = useCallback(async () => {
+    try {
+      // Get all confirmed products
+      const confirmedProductsList = products.filter((p) => confirmedProducts.has(p.id));
+      
+      if (confirmedProductsList.length === 0) {
+        alert("Please confirm at least one product before proceeding.");
+        return;
       }
-    });
-    onNext();
-  }, [products, confirmedProducts, updateProduct, onNext]);
+
+      console.log(`Creating cases for ${confirmedProductsList.length} confirmed products...`);
+
+      // Create cases for all confirmed products
+      const caseCreationPromises = confirmedProductsList.map(async (product) => {
+        // Generate case number from product data
+        const caseNumber = `${product.egData?.data?.NO}${product.egData?.data?.NO_R}`
+
+        const caseData = {
+          caseNumber,
+          status: 'pending' as const,
+          recdEG: true,
+          catalogueData: product.catalogueData?.data || {},
+          egData: product.egData?.data || {},
+          applicationData: product.applicationData?.data || {},
+          categoryId: product.category || undefined,
+        };
+
+        console.log(`Creating case for product ${product.name}:`, caseNumber);
+        return createCase(caseData);
+      });
+
+      // Wait for all cases to be created
+      const results = await Promise.all(caseCreationPromises);
+      
+      // Check if any failed
+      const failedCases = results.filter(r => !r || !r.success);
+      
+      if (failedCases.length > 0) {
+        alert(`Warning: ${failedCases.length} case(s) failed to create. Please check the console for details.`);
+      } else {
+        console.log(`Successfully created ${results.length} cases`);
+      }
+
+      // Mark confirmed products as pending_review
+      confirmedProductsList.forEach((p) => {
+        updateProduct(p.id, { status: "pending_review" });
+      });
+
+      // Proceed to next stage
+      onNext();
+    } catch (error) {
+      console.error("Error creating cases:", error);
+      alert("An error occurred while creating cases. Please try again.");
+    }
+  }, [products, confirmedProducts, createCase, updateProduct, onNext]);
 
   const handleExportExcel = useCallback(() => {
     // Helper function to get data (same logic as table display)
@@ -852,7 +901,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle className="text-lg">Product Data</CardTitle>
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-64">
+              {/* <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search products..."
@@ -860,7 +909,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
                 />
-              </div>
+              </div> */}
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -1089,18 +1138,28 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
           variant="outline"
           onClick={onBack}
           className="gap-2 bg-transparent"
+          disabled={isCreatingCases}
         >
           <ChevronLeft className="w-4 h-4" />
           Back to Upload
         </Button>
         <Button
           onClick={handleProceed}
-          disabled={confirmedProducts.size === 0}
+          disabled={confirmedProducts.size === 0 || isCreatingCases}
           size="lg"
           className="gap-2"
         >
-          Continue to Approval
-          <ChevronRight className="w-4 h-4" />
+          {isCreatingCases ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Creating Cases...
+            </>
+          ) : (
+            <>
+              Continue to Approval
+              <ChevronRight className="w-4 h-4" />
+            </>
+          )}
         </Button>
       </div>
     </div>

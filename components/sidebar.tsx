@@ -9,8 +9,11 @@ import {
   X,
   Upload,
   CheckCircle,
+  FileText,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useProductStore } from "@/lib/store";
 
 interface SidebarProps {
@@ -20,6 +23,7 @@ interface SidebarProps {
 
 export function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
   const { currentStage, setStage } = useProductStore();
+  const pathname = usePathname();
 
   return (
     <>
@@ -36,12 +40,29 @@ export function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
           />
         </div>
         <nav className="flex flex-col gap-3">
-          <button
+          <Link
+            href="/"
             title="Dashboard"
-            className="p-3 rounded-lg hover:bg-accent transition-colors text-foreground"
+            className={`p-3 rounded-lg transition-colors ${
+              pathname === "/" 
+                ? "bg-primary text-primary-foreground" 
+                : "hover:bg-accent text-foreground"
+            }`}
           >
             <LayoutDashboard className="w-5 h-5" />
-          </button>
+          </Link>
+          
+          {/* <Link
+            href="/cases"
+            title="All Cases"
+            className={`p-3 rounded-lg transition-colors ${
+              pathname === "/cases" 
+                ? "bg-primary text-primary-foreground" 
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <FileText className="w-5 h-5" />
+          </Link> */}
           
           {/* Quick Navigation */}
           <div className="border-t pt-3 mt-3 flex flex-col gap-3">
@@ -103,10 +124,31 @@ export function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
               </button>
             </div>
             <nav className="p-4 space-y-2">
-              <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-accent text-sm font-medium text-foreground">
+              <Link 
+                href="/"
+                className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
+                  pathname === "/" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-accent text-foreground"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 <LayoutDashboard className="w-4 h-4" />
                 Dashboard
-              </button>
+              </Link>
+              
+              <Link 
+                href="/cases"
+                className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
+                  pathname === "/cases" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-accent text-foreground"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <FileText className="w-4 h-4" />
+                All Cases
+              </Link>
               
               {/* Quick Navigation Section */}
               <div className="pt-4 mt-4 border-t space-y-2">
