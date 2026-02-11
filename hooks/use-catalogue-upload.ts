@@ -1,3 +1,4 @@
+import { CLOUDFRONT_URL } from "@/lib/utils";
 import { useState, useCallback } from "react";
 
 export function useCatalogueUpload() {
@@ -14,10 +15,12 @@ export function useCatalogueUpload() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("productName", productName);
-        const response = await fetch("/api/extract/catalogue", {
+        const response = await fetch(`${CLOUDFRONT_URL}/extract/catalogue`, {
           method: "POST",
           body: formData,
         });
+
+        console.log("Catalogue response:", response);
 
         if (!response.ok) {
           throw new Error("Failed to upload catalogue");
