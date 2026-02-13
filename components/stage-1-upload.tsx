@@ -457,7 +457,10 @@ function ProductUploadCard({
                       if (file) handleFileUpload(type, file);
                     }}
                     disabled={isLoading}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    className={cn(
+                      "absolute inset-0 opacity-0 cursor-pointer",
+                      isUploaded && "pointer-events-none"
+                    )}
                   />
                   <div className="flex flex-col items-center text-center gap-2">
                     <div
