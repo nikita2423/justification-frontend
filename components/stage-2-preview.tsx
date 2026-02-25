@@ -183,7 +183,7 @@ function EditDialog({ product, isOpen, onClose, onSave }: EditDialogProps) {
   useEffect(() => {
     if (isOpen && product) {
       console.log("Initializing edit dialog for product:", product);
-      
+
       const egData: Record<string, string> = {};
       egFields.forEach((field) => {
         egData[field] = getData(product, field);
@@ -480,8 +480,13 @@ const egFields = [
 ];
 
 export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
-  const { products, updateProduct, setProducts, removeProduct } = useProductStore();
-  const { createCase, isLoading: isCreatingCases, error: createCaseError } = useCreateCase();
+  const { products, updateProduct, setProducts, removeProduct } =
+    useProductStore();
+  const {
+    createCase,
+    isLoading: isCreatingCases,
+    error: createCaseError,
+  } = useCreateCase();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<keyof Product>("name");
@@ -490,7 +495,9 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
   const [confirmedProducts, setConfirmedProducts] = useState<Set<string>>(
     new Set(),
   );
-  const [activeTableTab, setActiveTableTab] = useState<"a_record" | "pa_admin">("a_record");
+  const [activeTableTab, setActiveTableTab] = useState<"a_record" | "pa_admin">(
+    "a_record",
+  );
 
   const paAdminFields = [
     "PA_RefL",
@@ -510,17 +517,24 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
     "PA_Justify",
   ];
 
-  const handleDelete = useCallback((productId: string, productName: string) => {
-    if (confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) {
-      removeProduct(productId);
-      // Also remove from confirmed products if it was confirmed
-      setConfirmedProducts((prev) => {
-        const next = new Set(prev);
-        next.delete(productId);
-        return next;
-      });
-    }
-  }, [removeProduct]);
+  const handleDelete = useCallback(
+    (productId: string, productName: string) => {
+      if (
+        confirm(
+          `Are you sure you want to delete "${productName}"? This action cannot be undone.`,
+        )
+      ) {
+        removeProduct(productId);
+        // Also remove from confirmed products if it was confirmed
+        setConfirmedProducts((prev) => {
+          const next = new Set(prev);
+          next.delete(productId);
+          return next;
+        });
+      }
+    },
+    [removeProduct],
+  );
 
   const handleSort = useCallback(
     (field: keyof Product) => {
@@ -587,43 +601,51 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
   const handleProceed = useCallback(async () => {
     try {
       // Get all confirmed products
-      const confirmedProductsList = products.filter((p) => confirmedProducts.has(p.id));
-      
+      const confirmedProductsList = products.filter((p) =>
+        confirmedProducts.has(p.id),
+      );
+
       if (confirmedProductsList.length === 0) {
         alert("Please confirm at least one product before proceeding.");
         return;
       }
 
-      console.log(`Creating cases for ${confirmedProductsList.length} confirmed products...`);
+      console.log(
+        `Creating cases for ${confirmedProductsList.length} confirmed products...`,
+      );
 
       // Create cases for all confirmed products
-      const caseCreationPromises = confirmedProductsList.map(async (product) => {
-        // Generate case number from product data
-        const caseNumber = `${product.egData?.data?.NO}${product.egData?.data?.NO_R}`
+      const caseCreationPromises = confirmedProductsList.map(
+        async (product) => {
+          // Generate case number from product data
+          const caseNumber = `${product.egData?.data?.NO}${product.egData?.data?.NO_R}`;
 
-        const caseData = {
-          caseNumber,
-          userId: user?.id || 'unknown',
-          status: 'pending' as const,
-          recdEG: true,
-          catalogueData: product.catalogueData?.data || {},
-          egData: product.egData?.data || {},
-          applicationData: product.applicationData?.data || {},
-          categoryId: product.category || undefined,
-        };
+          const caseData = {
+            caseNumber,
+            userId: user?.id || "unknown",
+            status: "pending" as const,
+            recdEG: true,
+            catalogueData: product.catalogueData?.data || {},
+            egData: product.egData?.data || {},
+            applicationData: product.applicationData?.data || {},
+            categoryId: product.category || undefined,
+          };
 
-        console.log(`Creating case for product ${product.name}:`, caseNumber);
-        return createCase(caseData);
-      });
+          console.log(`Creating case for product ${product.name}:`, caseNumber);
+          return createCase(caseData);
+        },
+      );
 
       // Wait for all cases to be created
       const results = await Promise.all(caseCreationPromises);
-      
+
       // Check if any failed
-      const failedCases = results.filter(r => !r || !r.success);
-      
+      const failedCases = results.filter((r) => !r || !r.success);
+
       if (failedCases.length > 0) {
-        alert(`Warning: ${failedCases.length} case(s) failed to create. Please check the console for details.`);
+        alert(
+          `Warning: ${failedCases.length} case(s) failed to create. Please check the console for details.`,
+        );
       } else {
         console.log(`Successfully created ${results.length} cases`);
       }
@@ -647,7 +669,8 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
       if (key == "App_Cat") {
         // Special case for App_Cat to fallback to product category
         const egVal = product.applicationData?.data?.["PA_RefL"];
-        if (egVal !== undefined) return egVal;
+        if (egVal !== undefined && egVal === "Yes") return "Procurement";
+        else return "/";
       }
       if (
         key === "Recd_EGF" ||
@@ -670,6 +693,22 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
       }
       if (key === "DatEntry") {
         return new Date().toLocaleDateString();
+      }
+
+      if (
+        key === "D_EGF_Out" ||
+        key === "D_EGF_Dead" ||
+        key === "D_ReqT_SWD" ||
+        key === "D_RetF_SWD" ||
+        key === "D_WkRep" ||
+        key === "D_EGF_T_EG" ||
+        key === "D_EG_Reply" ||
+        key === "D_EGF_ASWD" ||
+        key === "MRef"
+      ) {
+        const egVal = product.egData?.data?.[key];
+        if (egVal !== undefined) return egVal;
+        else return "";
       }
 
       // Check direct property (if strict match), or checks inside data objects
@@ -703,6 +742,11 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
       .map((p) => {
         const appData = p.applicationData.data || {};
         return {
+          Ref: getData(p, "Ref") || "",
+          Tranche: getData(p, "Tranche") || "",
+          EB_RM: getData(p, "EB_RM") || "",
+          NO: getData(p, "NO") || "",
+          NO_R: getData(p, "NO_R") || "",
           PA_RefL: appData.PA_RefL || "",
           PA_Cat: appData.PA_Cat || "",
           PA_PName: appData.PA_PName || "",
@@ -714,11 +758,11 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
           Staff_Avail: appData.Staff_Avail || "No",
           No_Elderly: appData.No_Elderly || 0,
           No_Disable: appData.No_Disable || 0,
-          No_Bene: appData.No_Bene || 0,
           Typ_Disability: appData.Typ_Disability || "/",
+          No_Bene: appData.No_Bene || 0,
+          PA_Justify: appData.PA_Justify || "",
 
           PA_Elaborate: appData.PA_Elaborate || "",
-          PA_Justify: appData.PA_Justify || "",
         };
       });
     console.log("applicationData", applicationData);
@@ -748,8 +792,10 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
     // Helper function to get data (same logic as table display)
     const getData = (product: Product, key: string) => {
       if (key == "App_Cat") {
+        // Special case for App_Cat to fallback to product category
         const egVal = product.applicationData?.data?.["PA_RefL"];
-        if (egVal !== undefined) return egVal;
+        if (egVal !== undefined && egVal === "Yes") return "Procurement";
+        else return "/";
       }
       if (
         key === "Recd_EGF" ||
@@ -772,6 +818,22 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
       }
       if (key === "DatEntry") {
         return new Date().toLocaleDateString();
+      }
+
+      if (
+        key === "D_EGF_Out" ||
+        key === "D_EGF_Dead" ||
+        key === "D_ReqT_SWD" ||
+        key === "D_RetF_SWD" ||
+        key === "D_WkRep" ||
+        key === "D_EGF_T_EG" ||
+        key === "D_EG_Reply" ||
+        key === "D_EGF_ASWD" ||
+        key === "MRef"
+      ) {
+        const egVal = product.egData?.data?.[key];
+        if (egVal !== undefined) return egVal;
+        else return "";
       }
 
       const egVal = product.egData?.data?.[key];
@@ -929,8 +991,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                   onClick={handleExportARecordOnly}
                   className="gap-1.5 bg-transparent"
                 >
-                  <Download className="w-4 h-4" />
-                  A Record Admin
+                  <Download className="w-4 h-4" />A Record Admin
                 </Button>
                 {/* <Button
                   variant="outline"
@@ -956,7 +1017,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
               </Button>
             </div>
           </div>
-          
+
           {/* Table Tabs */}
           <div className="flex gap-2 border-b mt-4">
             <button
@@ -992,21 +1053,19 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-12 fixed-left sticky left-0 bg-muted/50 z-10"></TableHead>
-                  {activeTableTab === "a_record" ? (
-                    // A_record_admin columns (EG fields)
-                    egFields.map((col) => (
-                      <TableHead key={col} className="whitespace-nowrap px-4">
-                        {col}
-                      </TableHead>
-                    ))
-                  ) : (
-                    // PA_admin columns (Application fields)
-                    paAdminFields.map((col) => (
-                      <TableHead key={col} className="whitespace-nowrap px-4">
-                        {col}
-                      </TableHead>
-                    ))
-                  )}
+                  {activeTableTab === "a_record"
+                    ? // A_record_admin columns (EG fields)
+                      egFields.map((col) => (
+                        <TableHead key={col} className="whitespace-nowrap px-4">
+                          {col}
+                        </TableHead>
+                      ))
+                    : // PA_admin columns (Application fields)
+                      paAdminFields.map((col) => (
+                        <TableHead key={col} className="whitespace-nowrap px-4">
+                          {col}
+                        </TableHead>
+                      ))}
                   <TableHead className="text-right sticky right-0 bg-muted/50 z-10">
                     Actions
                   </TableHead>
@@ -1078,21 +1137,25 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                         </button>
                       </TableCell>
 
-                      {activeTableTab === "a_record" ? (
-                        // A_record_admin data (EG fields)
-                        egFields.map((col) => (
-                          <TableCell key={col} className="whitespace-nowrap px-4">
-                            {getData(col)}
-                          </TableCell>
-                        ))
-                      ) : (
-                        // PA_admin data (Application fields)
-                        paAdminFields.map((col) => (
-                          <TableCell key={col} className="whitespace-nowrap px-4">
-                            {getData(col)}
-                          </TableCell>
-                        ))
-                      )}
+                      {activeTableTab === "a_record"
+                        ? // A_record_admin data (EG fields)
+                          egFields.map((col) => (
+                            <TableCell
+                              key={col}
+                              className="whitespace-nowrap px-4"
+                            >
+                              {getData(col)}
+                            </TableCell>
+                          ))
+                        : // PA_admin data (Application fields)
+                          paAdminFields.map((col) => (
+                            <TableCell
+                              key={col}
+                              className="whitespace-nowrap px-4"
+                            >
+                              {getData(col)}
+                            </TableCell>
+                          ))}
 
                       <TableCell className="text-right sticky right-0 bg-background z-10">
                         <div className="flex items-center justify-end gap-1">
@@ -1107,7 +1170,9 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(product.id, product.name)}
+                            onClick={() =>
+                              handleDelete(product.id, product.name)
+                            }
                             className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="w-4 h-4" />

@@ -185,9 +185,13 @@ function ProductUploadCard({
         JSON.parse(JSON.stringify(product.catalogueData.data.products[0])),
       );
     }
-    
+
     // If we have uploaded files and data, show the preview automatically
-    if (product?.egData?.data || product?.applicationData?.data || product?.catalogueData?.data) {
+    if (
+      product?.egData?.data ||
+      product?.applicationData?.data ||
+      product?.catalogueData?.data
+    ) {
       setShowExtractedPreview(true);
     }
   }, [product.id]); // Only run when product ID changes (component mount)
@@ -286,11 +290,11 @@ function ProductUploadCard({
         .then((data) => {
           // Automatically set product name to {NO}{NO_R}
           const updates: any = { egData: data };
-          
+
           if (data?.data?.NO && data?.data?.NO_R) {
             updates.name = `${data.data.NO}${data.data.NO_R}`;
           }
-          
+
           onUpdate(updates);
         })
         .catch((err) => {
@@ -459,7 +463,7 @@ function ProductUploadCard({
                     disabled={isLoading}
                     className={cn(
                       "absolute inset-0 opacity-0 cursor-pointer",
-                      isUploaded && "pointer-events-none"
+                      isUploaded && "pointer-events-none",
                     )}
                   />
                   <div className="flex flex-col items-center text-center gap-2">
@@ -1125,109 +1129,104 @@ function ProductUploadCard({
                         </TableRow>
                         {/* {editableCatalogueData.products &&
                           editableCatalogueData.products.length > 0 && ( */}
-                            <>
-                              <TableRow>
-                                <TableCell className="text-xs font-medium text-muted-foreground">
-                                  Product Name
-                                </TableCell>
-                                <TableCell className="text-xs">
-                                  <Input
-                                    value={
-                                      editableCatalogueData.product_name || ""
-                                    }
-                                    onChange={(e) =>
-                                      setEditableCatalogueData((prev) => ({
-                                        ...prev,
-                                        product_name: e.target.value,
-                                      }))
-                                    }
-                                    className="h-6 text-xs"
-                                  />
-                                </TableCell>
-                              </TableRow>
-                              {editableCatalogueData.model && (
-                                <TableRow>
-                                  <TableCell className="text-xs font-medium text-muted-foreground">
-                                    Model
-                                  </TableCell>
-                                  <TableCell className="text-xs">
-                                    <Input
-                                      value={editableCatalogueData.model || ""}
-                                      onChange={(e) =>
-                                        setEditableCatalogueData((prev) => ({
-                                          ...prev,
-                                          model: e.target.value,
-                                        }))
-                                      }
-                                      className="h-6 text-xs font-mono"
-                                    />
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                              {editableCatalogueData.product_size && (
-                                <TableRow>
-                                  <TableCell className="text-xs font-medium text-muted-foreground">
-                                    Size
-                                  </TableCell>
-                                  <TableCell className="text-xs">
-                                    <Input
-                                      value={
-                                        editableCatalogueData.product_size || ""
-                                      }
-                                      onChange={(e) =>
-                                        setEditableCatalogueData((prev) => ({
-                                          ...prev,
-                                          product_size: e.target.value,
-                                        }))
-                                      }
-                                      className="h-6 text-xs"
-                                    />
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                              {editableCatalogueData.usage_capacity && (
-                                <TableRow>
-                                  <TableCell className="text-xs font-medium text-muted-foreground">
-                                    Usage Capacity
-                                  </TableCell>
-                                  <TableCell className="text-xs">
-                                    <Input
-                                      value={
-                                        editableCatalogueData.usage_capacity ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        setEditableCatalogueData((prev) => ({
-                                          ...prev,
-                                          usage_capacity: e.target.value,
-                                        }))
-                                      }
-                                      className="h-6 text-xs"
-                                    />
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                              <TableRow>
-                                <TableCell className="text-xs font-medium text-muted-foreground">
-                                  Description
-                                </TableCell>
-                                <TableCell className="text-xs">
-                                  <textarea
-                                    value={
-                                      editableCatalogueData.description || ""
-                                    }
-                                    onChange={(e) =>
-                                      setEditableCatalogueData((prev) => ({
-                                        ...prev,
-                                        description: e.target.value,
-                                      }))
-                                    }
-                                    className="w-full h-16 px-2 py-1 text-xs border rounded resize-none"
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            </>
-                          {/* // )} */}
+                        <>
+                          <TableRow>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                              Product Name
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Input
+                                value={editableCatalogueData.product_name || ""}
+                                onChange={(e) =>
+                                  setEditableCatalogueData((prev) => ({
+                                    ...prev,
+                                    product_name: e.target.value,
+                                  }))
+                                }
+                                className="h-6 text-xs"
+                              />
+                            </TableCell>
+                          </TableRow>
+                          {editableCatalogueData.model && (
+                            <TableRow>
+                              <TableCell className="text-xs font-medium text-muted-foreground">
+                                Model
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                <Input
+                                  value={editableCatalogueData.model || ""}
+                                  onChange={(e) =>
+                                    setEditableCatalogueData((prev) => ({
+                                      ...prev,
+                                      model: e.target.value,
+                                    }))
+                                  }
+                                  className="h-6 text-xs font-mono"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          {editableCatalogueData.product_size && (
+                            <TableRow>
+                              <TableCell className="text-xs font-medium text-muted-foreground">
+                                Size
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                <Input
+                                  value={
+                                    editableCatalogueData.product_size || ""
+                                  }
+                                  onChange={(e) =>
+                                    setEditableCatalogueData((prev) => ({
+                                      ...prev,
+                                      product_size: e.target.value,
+                                    }))
+                                  }
+                                  className="h-6 text-xs"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          {editableCatalogueData.usage_capacity && (
+                            <TableRow>
+                              <TableCell className="text-xs font-medium text-muted-foreground">
+                                Usage Capacity
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                <Input
+                                  value={
+                                    editableCatalogueData.usage_capacity || ""
+                                  }
+                                  onChange={(e) =>
+                                    setEditableCatalogueData((prev) => ({
+                                      ...prev,
+                                      usage_capacity: e.target.value,
+                                    }))
+                                  }
+                                  className="h-6 text-xs"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          <TableRow>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                              Description
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <textarea
+                                value={editableCatalogueData.description || ""}
+                                onChange={(e) =>
+                                  setEditableCatalogueData((prev) => ({
+                                    ...prev,
+                                    description: e.target.value,
+                                  }))
+                                }
+                                className="w-full h-16 px-2 py-1 text-xs border rounded resize-none"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        </>
+                        {/* // )} */}
                       </>
                     )}
                   </TableBody>
@@ -1397,26 +1396,30 @@ export function Stage1Upload({ onNext }: Stage1UploadProps) {
           Add Product
         </Button>
       </div>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="common-season">Season (applies to all products)</Label>
-              <Input
-                id="common-season"
-                value={commonSeason}
-                onChange={(e) => setCommonSeason(e.target.value)}
-                placeholder="e.g., Spring 2026"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="common-tranch">Tranche (applies to all products)</Label>
-              <Input
-                id="common-tranch"
-                value={commonTranch}
-                onChange={(e) => setCommonTranch(e.target.value)}
-                placeholder="e.g., Tranche A"
-              />
-            </div>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="common-season">
+            Season (applies to all products)
+          </Label>
+          <Input
+            id="common-season"
+            value={commonSeason}
+            onChange={(e) => setCommonSeason(e.target.value)}
+            placeholder="e.g., Spring 2026"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="common-tranch">
+            Tranche (applies to all products)
+          </Label>
+          <Input
+            id="common-tranch"
+            value={commonTranch}
+            onChange={(e) => setCommonTranch(e.target.value)}
+            placeholder="e.g., Tranche A"
+          />
+        </div>
+      </div>
 
       {/* Common Season and Tranche Section */}
       {/* <Card className="border-primary/20 bg-primary/5">
@@ -1513,7 +1516,16 @@ export function Stage1Upload({ onNext }: Stage1UploadProps) {
         </div>
       )}
 
-      <div className="flex justify-end pt-4 border-t">
+      <div className="flex justify-end gap-3 pt-4 border-t">
+        <Button
+          onClick={handleAddProduct}
+          variant="outline"
+          size="lg"
+          className="gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Product
+        </Button>
         <Button
           onClick={onNext}
           disabled={!canProceed}
