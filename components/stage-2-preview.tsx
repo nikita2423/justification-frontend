@@ -167,7 +167,8 @@ function EditDialog({ product, isOpen, onClose, onSave }: EditDialogProps) {
       return "NO";
     }
     if (key === "DatEntry") {
-      return new Date().toLocaleDateString();
+      return "";
+      // return new Date().toLocaleDateString();
     }
 
     const egVal = prod.egData?.data?.[key];
@@ -692,7 +693,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
         return "NO";
       }
       if (key === "DatEntry") {
-        return new Date().toLocaleDateString();
+        return "";
       }
 
       if (
@@ -817,7 +818,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
         return "NO";
       }
       if (key === "DatEntry") {
-        return new Date().toLocaleDateString();
+        return "";
       }
 
       if (
@@ -1100,7 +1101,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                       return "NO";
                     }
                     if (key === "DatEntry") {
-                      return new Date().toLocaleDateString();
+                      return "";
                     }
 
                     // Check direct property (if strict match), or checks inside data objects

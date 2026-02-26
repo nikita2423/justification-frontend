@@ -71,41 +71,8 @@ interface ProductUploadCardProps {
   onRemove: () => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
-}
-
-// Simulated data extraction from uploaded files
-function simulateDataExtraction(product: Product): ExtractedData | null {
-  const uploadedFiles = product.files.filter((f) => f.status === "uploaded");
-  if (uploadedFiles.length === 0) return null;
-
-  // Simulate extracted data based on uploaded files and existing product data
-  const categories = [
-    "Electronics",
-    "Apparel",
-    "Home Goods",
-    "Industrial",
-    "Consumer Goods",
-  ];
-  const seasons = ["Spring 2026", "Summer 2026", "Fall 2026", "Winter 2026"];
-  const tranches = ["Tranch A", "Tranch B", "Tranch C", "Tranch D"];
-
-  return {
-    productName: product.name || `Product-${product.id.slice(-4)}`,
-    sku:
-      product.sku ||
-      `SKU-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-    category:
-      product.category ||
-      categories[Math.floor(Math.random() * categories.length)],
-    season:
-      product.season || seasons[Math.floor(Math.random() * seasons.length)],
-    tranch:
-      product.tranch || tranches[Math.floor(Math.random() * tranches.length)],
-    supplier: product.supplier || "Auto-detected Supplier",
-    description:
-      product.description || "Extracted product description from documentation",
-    confidence: 75 + Math.floor(Math.random() * 20),
-  };
+  commonTranch: string;
+  commonSeason: string;
 }
 
 function ProductUploadCard({
@@ -114,12 +81,14 @@ function ProductUploadCard({
   onRemove,
   isExpanded,
   onToggleExpand,
+  commonTranch,
+  commonSeason,
 }: ProductUploadCardProps) {
   console.log("product", product);
   const [showExtractedPreview, setShowExtractedPreview] = useState(false);
-  const [extractedData, setExtractedData] = useState<ExtractedData | null>(
-    null,
-  );
+  // const [extractedData, setExtractedData] = useState<ExtractedData | null>(
+  //   null,
+  // );
   const [isExtracting, setIsExtracting] = useState(false);
   const [pendingCatalogueFile, setPendingCatalogueFile] = useState<File | null>(
     null,
@@ -148,8 +117,8 @@ function ProductUploadCard({
     setIsExtracting(true);
     // Simulate extraction delay
     setTimeout(() => {
-      const data = simulateDataExtraction(product);
-      setExtractedData(data);
+      // const data = simulateDataExtraction(product);
+      // setExtractedData(data);
       setShowExtractedPreview(true);
       setIsExtracting(false);
 
@@ -233,37 +202,29 @@ function ProductUploadCard({
   ]);
 
   const handleApplyExtractedData = useCallback(() => {
-    if (extractedData) {
-      const updates: Partial<Product> = {
-        name: extractedData.productName,
-        sku: extractedData.sku,
-        category: extractedData.category,
-        season: extractedData.season,
-        tranch: extractedData.tranch,
-        supplier: extractedData.supplier,
-        description: extractedData.description,
-      };
+    // if (extractedData) {
+    const updates: Partial<Product> = {};
 
-      // Always save editable data if it exists
-      if (Object.keys(editableEgData).length > 0) {
-        updates.egData = { data: editableEgData };
-      }
-      if (Object.keys(editableAppData).length > 0) {
-        updates.applicationData = { data: editableAppData };
-      }
-      if (Object.keys(editableCatalogueData).length > 0) {
-        updates.catalogueData = {
-          data: {
-            products: [editableCatalogueData],
-          },
-        };
-      }
-
-      onUpdate(updates);
-      setShowExtractedPreview(false);
+    // Always save editable data if it exists
+    if (Object.keys(editableEgData).length > 0) {
+      updates.egData = { data: editableEgData };
     }
+    if (Object.keys(editableAppData).length > 0) {
+      updates.applicationData = { data: editableAppData };
+    }
+    if (Object.keys(editableCatalogueData).length > 0) {
+      updates.catalogueData = {
+        data: {
+          products: [editableCatalogueData],
+        },
+      };
+    }
+
+    onUpdate(updates);
+    setShowExtractedPreview(false);
+    // }
   }, [
-    extractedData,
+    // extractedData,
     editableEgData,
     editableAppData,
     editableCatalogueData,
@@ -286,7 +247,7 @@ function ProductUploadCard({
   const handleEGUpload = useCallback(
     (file: File) => {
       console.log("product", product);
-      uploadEGForm(file, product.tranch, product.season)
+      uploadEGForm(file, commonTranch, commonSeason)
         .then((data) => {
           // Automatically set product name to {NO}{NO_R}
           const updates: any = { egData: data };
@@ -301,7 +262,7 @@ function ProductUploadCard({
           console.error("Failed to upload EG form:", err);
         });
     },
-    [uploadEGForm, onUpdate, product.tranch],
+    [uploadEGForm, onUpdate, commonTranch],
   );
 
   const handleCatalogueUpload = useCallback(
@@ -1511,6 +1472,8 @@ export function Stage1Upload({ onNext }: Stage1UploadProps) {
               onRemove={() => removeProduct(product.id)}
               isExpanded={expandedProducts.includes(product.id)}
               onToggleExpand={() => toggleExpand(product.id)}
+              commonTranch={commonTranch}
+              commonSeason={commonSeason}
             />
           ))}
         </div>
