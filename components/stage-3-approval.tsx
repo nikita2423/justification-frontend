@@ -18,6 +18,7 @@ import {
   BarChart3,
   Copy,
   Check,
+  Edit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +28,16 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -45,13 +55,14 @@ import { useProductStore } from "@/lib/store";
 import { useSimilarMatches } from "@/hooks/use-similar-matches";
 import { useGetCases } from "@/hooks/use-get-cases";
 import { useUpdateCaseStatus } from "@/hooks/use-update-case-status";
+import { useSaveCaseData } from "@/hooks/use-save-case-data";
 import { useAuth } from "@/lib/auth-context";
 import type {
   Product,
   SimilarJustification,
   SimilarCaseAnalysis,
 } from "@/lib/types";
-import type { Case } from "@/app/api/cases/types";
+import type { Case, SaveCaseDataDto } from "@/app/api/cases/types";
 
 // Mock AI justification generation
 const generateJustification = async (
@@ -196,6 +207,86 @@ interface Stage3ApprovalProps {
   onComplete: () => void;
 }
 
+interface EditingCase {
+  id: string;
+  egData: Record<string, any>;
+  applicationData: Record<string, any>;
+  catalogueData: Record<string, any>;
+}
+
+const egFields = [
+  "SWD_Ref",
+  "Ref",
+  "App_No",
+  "Tranche",
+  "EB_RM",
+  "NO",
+  "NO_R",
+  "Staff",
+  "D_ReqF_SWD",
+  "D_PlnT_SWD",
+  "D_EGF_Out",
+  "D_EGF_Dead",
+  "SWD_Off_N",
+  "SWD_Off_P",
+  "SWD_Off_I",
+  "App_Type",
+  "App_Cat",
+  "App_PNam_Mod",
+  "Rem_RA",
+  "Recd_EGF",
+  "Recd_PAF",
+  "Recd_Quo",
+  "Recd_Cat",
+  "Ret_Rept",
+  "MRef",
+  "Req_I_SWD_YN",
+  "D_ReqT_SWD",
+  "Req_RepSWD_YN",
+  "D_RetF_SWD",
+  "Rem_Req",
+  "D_WkRep",
+  "WkRep_Status",
+  "WkRep_Rem",
+  "RecdCurrWk_YN",
+  "EGF_Ready_YN",
+  "EGF_To_EG_YN",
+  "D_EGF_T_EG",
+  "EG_Reply_YN",
+  "D_EG_Reply",
+  "Rem_EG",
+  "EGF_To_SWD_YN",
+  "D_EGF_ASWD",
+  "FUF_Comp_YN",
+  "DatEntry",
+];
+
+const appFields = [
+  "PA_RefL",
+  "PA_Cat",
+  "PA_PName",
+  "PA_Brand",
+  "PA_Mod_No",
+  "TotAmtR",
+  "Prof_Staff",
+  "Typ_Staff",
+  "Staff_Avail",
+  "No_Elderly",
+  "No_Disable",
+  "No_Bene",
+  "Typ_Disability",
+  "PA_Elaborate",
+  "PA_Justify",
+];
+
+const catalogueFields = [
+  "product_name",
+  "model",
+  "product_size",
+  "usage_capacity",
+  "description",
+];
+
 export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   const {
     products,
@@ -219,12 +310,19 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   const { user } = useAuth();
 
   // Fetch cases from API filtered by userId
-  const { cases, setCases, isLoading: isLoadingCases, error: casesError, refetch: refetchCases } = useGetCases(
-    user?.id ? { userId: user.id } : undefined
-  );
+  const {
+    cases,
+    setCases,
+    isLoading: isLoadingCases,
+    error: casesError,
+    refetch: refetchCases,
+  } = useGetCases(user?.id ? { userId: user.id } : undefined);
 
   // Update case status and justification
   const { updateCaseStatus, isLoading: isUpdatingCase } = useUpdateCaseStatus();
+
+  // Save case data
+  const { saveCaseData, isLoading: isSavingCaseData } = useSaveCaseData();
 
   console.log("Cases from API:", cases);
   console.log("Products in Stage3Approval:", products);
@@ -238,11 +336,113 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     useState<SimilarCaseAnalysis | null>(null);
   const [isLoadingSimilarCases, setIsLoadingSimilarCases] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingCase, setEditingCase] = useState<EditingCase | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [egFormData, setEgFormData] = useState<Record<string, string>>({});
+  const [appFormData, setAppFormData] = useState<Record<string, any>>({});
+  const [catalogueFormData, setCatalogueFormData] = useState<
+    Record<string, any>
+  >({});
+  const [activeTab, setActiveTab] = useState<
+    "eg" | "application" | "catalogue"
+  >("eg");
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleEditCase = (caseItem: any) => {
+    setEditingCase({
+      id: caseItem.id,
+      egData: caseItem.egData || {},
+      applicationData: caseItem.applicationData || {},
+      catalogueData: caseItem.catalogueData || {},
+    });
+
+    // Initialize form data
+    const egData: Record<string, string> = {};
+    egFields.forEach((field) => {
+      egData[field] = String(caseItem.egData?.[field] || "");
+    });
+    setEgFormData(egData);
+
+    // Initialize application data
+    const appData: Record<string, any> = {};
+    appFields.forEach((field) => {
+      appData[field] = caseItem.applicationData?.[field] || "";
+    });
+    setAppFormData(appData);
+
+    // Initialize catalogue data
+    const catData = caseItem.catalogueData?.products?.[0] || {};
+    setCatalogueFormData({
+      product_name: catData.product_name || "",
+      model: catData.model || "",
+      product_size: catData.product_size || "",
+      usage_capacity: catData.usage_capacity || "",
+      description: catData.description || "",
+    });
+
+    setActiveTab("eg");
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditedCase = async () => {
+    if (!editingCase) return;
+
+    try {
+      // Prepare data to save based on active tab
+      const saveData: SaveCaseDataDto = {};
+
+      if (activeTab === "eg") {
+        saveData.egData = egFormData;
+      } else if (activeTab === "application") {
+        saveData.applicationData = appFormData;
+      } else if (activeTab === "catalogue") {
+        saveData.catalogueData = {
+          products: [catalogueFormData],
+        };
+      }
+
+      // Save to API
+      const result = await saveCaseData(editingCase.id, saveData);
+
+      if (!result.success) {
+        alert(`Error saving case: ${result.error || "Unknown error"}`);
+        return;
+      }
+
+      // Update case in the cases list with the returned data
+      setCases((currentCases) =>
+        currentCases.map((c) =>
+          c.id === editingCase.id
+            ? {
+                ...c,
+                ...(activeTab === "eg" && { egData: egFormData }),
+                ...(activeTab === "application" && {
+                  applicationData: appFormData,
+                }),
+                ...(activeTab === "catalogue" && {
+                  catalogueData: { products: [catalogueFormData] },
+                }),
+                updatedAt: new Date().toISOString(),
+              }
+            : c,
+        ),
+      );
+
+      setIsEditModalOpen(false);
+      setEditingCase(null);
+      setEgFormData({});
+      setAppFormData({});
+      setCatalogueFormData({});
+      alert("Case updated successfully");
+    } catch (error) {
+      console.error("Error saving edited case:", error);
+      alert("Error saving case");
+    }
   };
 
   // Clear similar cases data when product selection changes
@@ -276,7 +476,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
       // Get the first selected case
       const selectedCaseId = selectedProducts[0];
       const selectedCase = cases.find((c) => c.id === selectedCaseId);
-      
+
       if (!selectedCase) {
         console.error("Selected case not found");
         return;
@@ -287,11 +487,15 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
       // Extract product information from catalogueData
       const productInfo = selectedCase.catalogueData?.products?.[0];
       const productName = productInfo?.product_name || "";
-      const description = productInfo?.description || selectedCase.catalogueData?.description || "";
-      
+      const description =
+        productInfo?.description ||
+        selectedCase.catalogueData?.description ||
+        "";
+
       // Extract category from applicationData
-      const category = selectedCase.applicationData?.PA_Cat || selectedCase.categoryId || "";
-      
+      const category =
+        selectedCase.applicationData?.PA_Cat || selectedCase.categoryId || "";
+
       console.log("Searching for similar cases with:", {
         productName,
         category,
@@ -441,15 +645,24 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
           // Extract product information from catalogueData
           const productInfo = selectedCase.catalogueData?.products?.[0];
           const productName = productInfo?.product_name || "";
-          const description = productInfo?.description || selectedCase.catalogueData?.description || "";
-          
-          // Extract category from applicationData
-          const category = selectedCase.applicationData?.PA_Cat || selectedCase.categoryId || "";
+          const description =
+            productInfo?.description ||
+            selectedCase.catalogueData?.description ||
+            "";
 
-          console.log(`Generating justification for case ${selectedCase.caseNumber}:`, {
-            productName,
-            category,
-          });
+          // Extract category from applicationData
+          const category =
+            selectedCase.applicationData?.PA_Cat ||
+            selectedCase.categoryId ||
+            "";
+
+          console.log(
+            `Generating justification for case ${selectedCase.caseNumber}:`,
+            {
+              productName,
+              category,
+            },
+          );
 
           // Fetch similar matches for this case
           try {
@@ -558,7 +771,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
     try {
       setIsGeneratingJustification(true);
 
-      console.log(`Confirming ${pendingDecision} decision for ${selectedProducts.length} case(s)`);
+      console.log(
+        `Confirming ${pendingDecision} decision for ${selectedProducts.length} case(s)`,
+      );
 
       // Update each selected case with status and justification
       const updatePromises = selectedProducts.map(async (caseId) => {
@@ -583,24 +798,30 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
 
       // Check for failures
       const failedUpdates = results.filter((r) => !r || !r.success);
-      
+
       if (failedUpdates.length > 0) {
         // Fallback: Update local state if API failed
-        setCases((currentCases) => 
-          currentCases.map((c) => 
-            selectedProducts.includes(c.id) 
-              ? { ...c, status: pendingDecision, justification: generatedJustification }
-              : c
-          )
+        setCases((currentCases) =>
+          currentCases.map((c) =>
+            selectedProducts.includes(c.id)
+              ? {
+                  ...c,
+                  status: pendingDecision,
+                  justification: generatedJustification,
+                }
+              : c,
+          ),
         );
 
         alert(
-          `Warning: ${failedUpdates.length} case(s) failed to save to server, but updated locally.`
+          `Warning: ${failedUpdates.length} case(s) failed to save to server, but updated locally.`,
         );
       } else {
-        console.log(`Successfully updated ${results.length} case(s) with ${pendingDecision} status`);
+        console.log(
+          `Successfully updated ${results.length} case(s) with ${pendingDecision} status`,
+        );
         alert(
-          `Successfully ${pendingDecision} ${results.length} case(s) with AI-generated justification.`
+          `Successfully ${pendingDecision} ${results.length} case(s) with AI-generated justification.`,
         );
         // Refresh cases list to ensure sync with server
         await refetchCases();
@@ -612,14 +833,18 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
       });
     } catch (error) {
       console.error("Error confirming decision:", error);
-      
+
       // Fallback: Update local state on error
-      setCases((currentCases) => 
-        currentCases.map((c) => 
-          selectedProducts.includes(c.id) 
-            ? { ...c, status: pendingDecision, justification: generatedJustification }
-            : c
-        )
+      setCases((currentCases) =>
+        currentCases.map((c) =>
+          selectedProducts.includes(c.id)
+            ? {
+                ...c,
+                status: pendingDecision,
+                justification: generatedJustification,
+              }
+            : c,
+        ),
       );
 
       alert("Error reaching server. Table updated locally.");
@@ -729,7 +954,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                     disabled={isLoadingCases}
                     className="gap-2"
                   >
-                    <RefreshCw className={`w-4 h-4 ${isLoadingCases ? 'animate-spin' : ''}`} />
+                    <RefreshCw
+                      className={`w-4 h-4 ${isLoadingCases ? "animate-spin" : ""}`}
+                    />
                   </Button>
                 </div>
               </div>
@@ -745,7 +972,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
               {isLoadingCases ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="ml-3 text-muted-foreground">Loading cases...</span>
+                  <span className="ml-3 text-muted-foreground">
+                    Loading cases...
+                  </span>
                 </div>
               ) : cases.length > 0 ? (
                 <div className="rounded-lg border overflow-hidden overflow-x-auto">
@@ -825,6 +1054,10 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                             {col}
                           </TableHead>
                         ))}
+                        {/* Sticky Actions Column Header */}
+                        <TableHead className="sticky right-0 whitespace-nowrap px-4 bg-muted/50 border-l font-semibold w-20 z-10">
+                          Actions
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -832,36 +1065,53 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                         .filter((caseItem) => {
                           // Filter by search query
                           const searchLower = searchQuery.toLowerCase();
-                          const productName = caseItem.egData?.App_PNam_Mod || caseItem.applicationData?.PA_PName || "";
+                          const productName =
+                            caseItem.egData?.App_PNam_Mod ||
+                            caseItem.applicationData?.PA_PName ||
+                            "";
                           return (
-                            caseItem.caseNumber.toLowerCase().includes(searchLower) ||
+                            caseItem.caseNumber
+                              .toLowerCase()
+                              .includes(searchLower) ||
                             productName.toLowerCase().includes(searchLower)
                           );
                         })
                         .map((caseItem) => {
-                          const isSelected = selectedProducts.includes(caseItem.id);
-                          
+                          const isSelected = selectedProducts.includes(
+                            caseItem.id,
+                          );
+
                           // Extract product name from egData or applicationData
-                          const productName = caseItem.egData?.App_PNam_Mod || 
-                                            caseItem.applicationData?.PA_PName || 
-                                            "—";
-                          
+                          const productName =
+                            caseItem.egData?.App_PNam_Mod ||
+                            caseItem.applicationData?.PA_PName ||
+                            "—";
+
                           // Extract ref number from egData
-                          const refNo = caseItem.egData?.Ref || 
-                                       caseItem.egData?.SWD_Ref || 
-                                       "—";
+                          const refNo =
+                            caseItem.egData?.Ref ||
+                            caseItem.egData?.SWD_Ref ||
+                            "—";
 
                           const getData = (key: string) => {
                             const egVal = caseItem.egData?.[key];
-                            if (egVal !== undefined && egVal !== null && egVal !== "") return egVal;
+                            if (
+                              egVal !== undefined &&
+                              egVal !== null &&
+                              egVal !== ""
+                            )
+                              return egVal;
                             return "—";
                           };
 
                           const statusColors = {
-                            pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
-                            approved: "bg-green-100 text-green-800 border-green-300",
+                            pending:
+                              "bg-yellow-100 text-yellow-800 border-yellow-300",
+                            approved:
+                              "bg-green-100 text-green-800 border-green-300",
                             rejected: "bg-red-100 text-red-800 border-red-300",
-                            under_review: "bg-blue-100 text-blue-800 border-blue-300",
+                            under_review:
+                              "bg-blue-100 text-blue-800 border-blue-300",
                           };
 
                           return (
@@ -893,7 +1143,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                                   variant="outline"
                                   className={statusColors[caseItem.status]}
                                 >
-                                  {caseItem.status.replace('_', ' ').toUpperCase()}
+                                  {caseItem.status
+                                    .replace("_", " ")
+                                    .toUpperCase()}
                                 </Badge>
                               </TableCell>
                               <TableCell className="font-medium whitespace-nowrap px-4 bg-primary/5">
@@ -953,6 +1205,21 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                                   {getData(col)}
                                 </TableCell>
                               ))}
+                              {/* Sticky Actions Column */}
+                              <TableCell className="sticky right-0 whitespace-nowrap px-4 bg-background border-l z-20">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditCase(caseItem);
+                                  }}
+                                  className="h-8 w-8"
+                                  title="Edit Case"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
                             </TableRow>
                           );
                         })}
@@ -964,64 +1231,65 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                   <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                     <FileText className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No pending cases</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No pending cases
+                  </h3>
                   <p className="text-muted-foreground max-w-md">
-                    There are no cases pending review. Upload products in Stage 1 to create new cases.
+                    There are no cases pending review. Upload products in Stage
+                    1 to create new cases.
                   </p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-              {selectedProducts.length > 0 && (
-                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                      <p className="font-medium">
-                        {selectedProducts.length} product(s) selected
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Choose an action to generate AI justification
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={handleRetrieveSimilarCases}
-                        disabled={
-                          isLoadingSimilarCases || isLoadingSimilarMatches
-                        }
-                        className="gap-2 bg-transparent"
-                      >
-                        {isLoadingSimilarCases || isLoadingSimilarMatches ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <History className="w-4 h-4" />
-                        )}
-                        Similar Cases
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleGenerateJustification("rejected")}
-                        disabled={isGeneratingJustification}
-                        className="gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        Reject
-                      </Button>
-                      <Button
-                        onClick={() => handleGenerateJustification("approved")}
-                        disabled={isGeneratingJustification}
-                        className="gap-2 bg-success hover:bg-success/90 text-success-foreground"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        Approve
-                      </Button>
-                    </div>
-                  </div>
+          {selectedProducts.length > 0 && (
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium">
+                    {selectedProducts.length} product(s) selected
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Choose an action to generate AI justification
+                  </p>
                 </div>
-              )}
-            {/* </CardContent>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleRetrieveSimilarCases}
+                    disabled={isLoadingSimilarCases || isLoadingSimilarMatches}
+                    className="gap-2 bg-transparent"
+                  >
+                    {isLoadingSimilarCases || isLoadingSimilarMatches ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <History className="w-4 h-4" />
+                    )}
+                    Similar Cases
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleGenerateJustification("rejected")}
+                    disabled={isGeneratingJustification}
+                    className="gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Reject
+                  </Button>
+                  <Button
+                    onClick={() => handleGenerateJustification("approved")}
+                    disabled={isGeneratingJustification}
+                    className="gap-2 bg-success hover:bg-success/90 text-success-foreground"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Approve
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* </CardContent>
           </Card> */}
 
           {isLoadingSimilarCases && (
@@ -1176,7 +1444,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
-                              onClick={() => handleCopy(caseItem.id, caseItem.justification)}
+                              onClick={() =>
+                                handleCopy(caseItem.id, caseItem.justification)
+                              }
                               title="Copy Justification"
                             >
                               {copiedId === caseItem.id ? (
@@ -1412,6 +1682,206 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
           <CheckCircle2 className="w-4 h-4" />
         </Button>
       </div>
+
+      {/* Edit Case Modal */}
+      {editingCase && (
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Case Details</DialogTitle>
+            </DialogHeader>
+
+            {/* Custom Tabs */}
+            <div className="flex gap-2 border-b mb-4">
+              <button
+                onClick={() => setActiveTab("eg")}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium transition-colors",
+                  activeTab === "eg"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                EG Form
+              </button>
+              <button
+                onClick={() => setActiveTab("application")}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium transition-colors",
+                  activeTab === "application"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Application
+              </button>
+              <button
+                onClick={() => setActiveTab("catalogue")}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium transition-colors",
+                  activeTab === "catalogue"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Catalogue
+              </button>
+            </div>
+
+            <div className="grid gap-4 py-4">
+              {/* EG Form Tab */}
+              {activeTab === "eg" && (
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    {egFields
+                      .filter(
+                        (field) =>
+                          editingCase?.egData?.[field] !== undefined &&
+                          editingCase?.egData?.[field] !== null &&
+                          editingCase?.egData?.[field] !== "",
+                      )
+                      .map((field) => (
+                        <div key={field} className="space-y-1">
+                          <Label className="text-xs">{field}</Label>
+                          <Input
+                            value={egFormData[field] || ""}
+                            onChange={(e) =>
+                              setEgFormData((prev) => ({
+                                ...prev,
+                                [field]: e.target.value,
+                              }))
+                            }
+                            className="text-sm"
+                            placeholder="/"
+                          />
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Application Data Tab */}
+              {activeTab === "application" && (
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {appFields.map((field) => (
+                      <div key={field} className="space-y-2">
+                        <Label className="text-sm">{field}</Label>
+                        {field.includes("Elaborate") ||
+                        field.includes("Justify") ? (
+                          <Textarea
+                            value={appFormData[field] || ""}
+                            onChange={(e) =>
+                              setAppFormData((prev) => ({
+                                ...prev,
+                                [field]: e.target.value,
+                              }))
+                            }
+                            rows={2}
+                            placeholder="/"
+                          />
+                        ) : (
+                          <Input
+                            value={appFormData[field] || ""}
+                            onChange={(e) =>
+                              setAppFormData((prev) => ({
+                                ...prev,
+                                [field]: e.target.value,
+                              }))
+                            }
+                            placeholder="/"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Catalogue Data Tab */}
+              {activeTab === "catalogue" && (
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Product Name</Label>
+                      <Input
+                        value={catalogueFormData.product_name || ""}
+                        onChange={(e) =>
+                          setCatalogueFormData((prev) => ({
+                            ...prev,
+                            product_name: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Model</Label>
+                      <Input
+                        value={catalogueFormData.model || ""}
+                        onChange={(e) =>
+                          setCatalogueFormData((prev) => ({
+                            ...prev,
+                            model: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Product Size</Label>
+                      <Input
+                        value={catalogueFormData.product_size || ""}
+                        onChange={(e) =>
+                          setCatalogueFormData((prev) => ({
+                            ...prev,
+                            product_size: e.target.value,
+                          }))
+                        }
+                        placeholder="/"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Usage Capacity</Label>
+                      <Input
+                        value={catalogueFormData.usage_capacity || ""}
+                        onChange={(e) =>
+                          setCatalogueFormData((prev) => ({
+                            ...prev,
+                            usage_capacity: e.target.value,
+                          }))
+                        }
+                        placeholder="/"
+                      />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Description</Label>
+                      <Textarea
+                        value={catalogueFormData.description || ""}
+                        onChange={(e) =>
+                          setCatalogueFormData((prev) => ({
+                            ...prev,
+                            description: e.target.value,
+                          }))
+                        }
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditedCase}>Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
