@@ -19,6 +19,7 @@ import {
   Copy,
   Check,
   Edit,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +66,7 @@ import { useSimilarMatches } from "@/hooks/use-similar-matches";
 import { useGetCases } from "@/hooks/use-get-cases";
 import { useUpdateCaseStatus } from "@/hooks/use-update-case-status";
 import { useSaveCaseData } from "@/hooks/use-save-case-data";
+import { useDeleteCase } from "@/hooks/use-delete-case";
 import { useAuth } from "@/lib/auth-context";
 import type {
   Product,
@@ -324,6 +335,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   // Save case data
   const { saveCaseData, isLoading: isSavingCaseData } = useSaveCaseData();
 
+  // Delete case
+  const { deleteCase, isLoading: isDeletingCase } = useDeleteCase();
+
   console.log("Cases from API:", cases);
   console.log("Products in Stage3Approval:", products);
 
@@ -346,11 +360,43 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   const [activeTab, setActiveTab] = useState<
     "eg" | "application" | "catalogue"
   >("eg");
+  const [caseToDelete, setCaseToDelete] = useState<string | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleOpenDeleteConfirm = (caseId: string) => {
+    setCaseToDelete(caseId);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!caseToDelete) return;
+
+    try {
+      const result = await deleteCase(caseToDelete);
+
+      if (!result.success) {
+        alert(`Error deleting case: ${result.error || "Unknown error"}`);
+        return;
+      }
+
+      // Remove the case from the cases list
+      setCases((currentCases) =>
+        currentCases.filter((c) => c.id !== caseToDelete),
+      );
+
+      setIsDeleteConfirmOpen(false);
+      setCaseToDelete(null);
+      alert("Case deleted successfully");
+    } catch (error) {
+      console.error("Error deleting case:", error);
+      alert("Error deleting case");
+    }
   };
 
   const handleEditCase = (caseItem: any) => {
@@ -1207,18 +1253,33 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                               ))}
                               {/* Sticky Actions Column */}
                               <TableCell className="sticky right-0 whitespace-nowrap px-4 bg-background border-l z-20">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditCase(caseItem);
-                                  }}
-                                  className="h-8 w-8"
-                                  title="Edit Case"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditCase(caseItem);
+                                    }}
+                                    className="h-8 w-8"
+                                    title="Edit Case"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenDeleteConfirm(caseItem.id);
+                                    }}
+                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    title="Delete Case"
+                                    disabled={isDeletingCase}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
@@ -1882,6 +1943,32 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Case Confirmation Dialog */}
+      <AlertDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Case</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this case? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <DialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              disabled={isDeletingCase}
+            >
+              {isDeletingCase ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </DialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
