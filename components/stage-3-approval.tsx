@@ -60,6 +60,13 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useProductStore } from "@/lib/store";
 import { useSimilarMatches } from "@/hooks/use-similar-matches";
@@ -342,6 +349,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   console.log("Products in Stage3Approval:", products);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "pending" | "approved" | "rejected"
+  >("pending");
   const [generatedJustification, setGeneratedJustification] = useState("");
   const [pendingDecision, setPendingDecision] = useState<
     "approved" | "rejected" | null
@@ -362,10 +372,40 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   >("eg");
   const [caseToDelete, setCaseToDelete] = useState<string | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [selectedSimilarCases, setSelectedSimilarCases] = useState<string[]>(
+    [],
+  );
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleToggleSimilarCase = (caseId: string) => {
+    setSelectedSimilarCases((prev) =>
+      prev.includes(caseId)
+        ? prev.filter((id) => id !== caseId)
+        : [...prev, caseId],
+    );
+  };
+
+  const handleCopySelectedTemplates = () => {
+    if (!similarCaseAnalysis?.cases) return;
+
+    const selectedCases = similarCaseAnalysis.cases.filter((c) =>
+      selectedSimilarCases.includes(c.id),
+    );
+
+    const templates = selectedCases
+      .map(
+        (caseItem, index) =>
+          `Template ${index + 1} (${caseItem.decision}):\n${caseItem.justification}`,
+      )
+      .join("\n\n---\n\n");
+
+    navigator.clipboard.writeText(templates);
+    setCopiedId("templates");
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -976,15 +1016,15 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
         <div className="lg:col-span-2 space-y-4">
           <Card>
             <CardHeader className="pb-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <CardTitle className="text-lg">Pending Cases</CardTitle>
+                  <CardTitle className="text-lg">Cases</CardTitle>
                   {isLoadingCases && (
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:w-48">
+                <div className="flex items-center gap-3 ml-auto">
+                  <div className="relative flex-1 sm:flex-initial sm:w-48">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Search cases..."
@@ -993,6 +1033,44 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       className="pl-9 h-9"
                     />
                   </div>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value) =>
+                      setStatusFilter(
+                        value as "all" | "pending" | "approved" | "rejected",
+                      )
+                    }
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-slate-500" />
+                          All
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="pending">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                          Pending
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="approved">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          Approved
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="rejected">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-red-500" />
+                          Rejected
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1109,18 +1187,31 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                     <TableBody>
                       {cases
                         .filter((caseItem) => {
-                          // Filter by search query
+                          // Filter by search query and status
                           const searchLower = searchQuery.toLowerCase();
                           const productName =
                             caseItem.egData?.App_PNam_Mod ||
                             caseItem.applicationData?.PA_PName ||
                             "";
-                          return (
+                          const searchMatch =
                             caseItem.caseNumber
                               .toLowerCase()
                               .includes(searchLower) ||
-                            productName.toLowerCase().includes(searchLower)
-                          );
+                            productName.toLowerCase().includes(searchLower);
+
+                          // Filter by status: all, pending, approved, or rejected
+                          let statusMatch = true;
+                          if (statusFilter === "pending") {
+                            statusMatch = caseItem.status === "pending";
+                          } else if (statusFilter === "approved") {
+                            statusMatch = caseItem.status === "approved";
+                          } else if (statusFilter === "rejected") {
+                            statusMatch = caseItem.status === "rejected";
+                          } else if (statusFilter === "all") {
+                            statusMatch = true;
+                          }
+
+                          return searchMatch && statusMatch;
                         })
                         .map((caseItem) => {
                           const isSelected = selectedProducts.includes(
@@ -1487,8 +1578,25 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
 
                 {/* Individual Cases */}
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-foreground">
-                    Individual Cases
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium text-foreground">
+                      Individual Cases
+                    </div>
+                    {selectedSimilarCases.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopySelectedTemplates}
+                        className="gap-2 text-xs"
+                      >
+                        {copiedId === "templates" ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                        Copy Templates ({selectedSimilarCases.length})
+                      </Button>
+                    )}
                   </div>
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                     {similarCaseAnalysis.cases.map((caseItem) => (
@@ -1498,6 +1606,15 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       >
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedSimilarCases.includes(
+                                caseItem.id,
+                              )}
+                              onCheckedChange={() =>
+                                handleToggleSimilarCase(caseItem.id)
+                              }
+                              className="h-4 w-4"
+                            />
                             <span className="font-medium text-sm">
                               {caseItem.productName}
                             </span>
@@ -1610,6 +1727,41 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                     rows={8}
                     className="text-sm"
                   />
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={
+                        pendingDecision === "approved" ? "default" : "outline"
+                      }
+                      size="sm"
+                      onClick={() => setPendingDecision("approved")}
+                      className={cn(
+                        "gap-1 flex-1",
+                        pendingDecision === "approved"
+                          ? "bg-success hover:bg-success/90 text-success-foreground"
+                          : "",
+                      )}
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      Approved
+                    </Button>
+                    <Button
+                      variant={
+                        pendingDecision === "rejected" ? "default" : "outline"
+                      }
+                      size="sm"
+                      onClick={() => setPendingDecision("rejected")}
+                      className={cn(
+                        "gap-1 flex-1",
+                        pendingDecision === "rejected"
+                          ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                          : "",
+                      )}
+                    >
+                      <XCircle className="w-3 h-3" />
+                      Rejected
+                    </Button>
+                  </div>
 
                   <div className="flex items-center gap-2">
                     <Button
