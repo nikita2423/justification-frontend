@@ -1,4 +1,4 @@
-import { PYTHON_BACKEND_URL } from "@/lib/utils";
+import { NEXT_PUBLIC_API_URL, PYTHON_BACKEND_URL } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
@@ -15,10 +15,13 @@ export async function POST(request: Request) {
     backendFormData.append("tranche", formData.get("tranche") as string);
     backendFormData.append("season", formData.get("season") as string);
 
-    const backendResponse = await fetch(`${PYTHON_BACKEND_URL}/extract/eg`, {
-      method: "POST",
-      body: backendFormData,
-    });
+    const backendResponse = await fetch(
+      `${NEXT_PUBLIC_API_URL}/api/extraction/extract-eg`,
+      {
+        method: "POST",
+        body: backendFormData,
+      },
+    );
 
     if (!backendResponse.ok) {
       throw new Error(`Backend API error: ${backendResponse.statusText}`);

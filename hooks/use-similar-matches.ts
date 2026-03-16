@@ -71,11 +71,14 @@ export function useSimilarMatches(): UseSimilarMatchesReturn {
             const metadata = dataset.metadata || {};
             return {
               id: dataset.id || `match-${index}`,
-              name: metadata.Prod_Name || metadata.Company || "Unknown",
+              name:
+                metadata?.pa_form_data?.PA_PName ||
+                metadata.Company ||
+                "Unknown",
               similarity: item.score || 0,
               category: metadata.RefL_Cat || metadata.PA_Cat || "",
-              description: metadata.Justify || metadata.RefL_Des || "",
-              approvalStatus: metadata.Q12a_T4 || "",
+              description: metadata.Q12b_Jus || metadata.Justify || "",
+              approvalStatus: metadata.Q12a || metadata.Q12a_T4 || "",
               metadata: metadata,
               modelCode: item?.Model_Code || "",
             };

@@ -1,4 +1,4 @@
-import { PYTHON_BACKEND_URL } from "@/lib/utils";
+import { NEXT_PUBLIC_API_URL, PYTHON_BACKEND_URL } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     console.log("PYTHON_BACKEND_URL", PYTHON_BACKEND_URL);
 
     const backendResponse = await fetch(
-      `${PYTHON_BACKEND_URL}/extract/application`,
+      `${NEXT_PUBLIC_API_URL}/api/extraction/extract-application`,
       {
         method: "POST",
         body: backendFormData,

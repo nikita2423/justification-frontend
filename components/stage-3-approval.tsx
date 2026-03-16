@@ -352,6 +352,8 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending" | "approved" | "rejected"
   >("pending");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [generatedJustification, setGeneratedJustification] = useState("");
   const [pendingDecision, setPendingDecision] = useState<
     "approved" | "rejected" | null
@@ -375,6 +377,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   const [selectedSimilarCases, setSelectedSimilarCases] = useState<string[]>(
     [],
   );
+  const [selectedSimilarCaseDetail, setSelectedSimilarCaseDetail] =
+    useState<SimilarJustification | null>(null);
+  const [isSimilarCaseModalOpen, setIsSimilarCaseModalOpen] = useState(false);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -388,6 +393,11 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
         ? prev.filter((id) => id !== caseId)
         : [...prev, caseId],
     );
+  };
+
+  const handleOpenSimilarCaseModal = (caseItem: SimilarJustification) => {
+    setSelectedSimilarCaseDetail(caseItem);
+    setIsSimilarCaseModalOpen(true);
   };
 
   const handleCopySelectedTemplates = () => {
@@ -596,8 +606,8 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
         },
         srcField: "PA_Cat",
         datasetName: "Justification Creation",
-        datasetType: "justification-testing",
-        dstField: "RefL_Cat",
+        datasetType: "justification-data",
+        dstField: "PA_Cat",
         descriptionField: "desc",
       });
 
@@ -606,10 +616,13 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
       // Transform API results to similar justifications format
       const transformedCases: SimilarJustification[] = matches.map((match) => {
         const approvalStatus =
-          match.approvalStatus || match.metadata?.Q12a_T4 || "";
+          match.approvalStatus ||
+          match.metadata?.Q12a ||
+          match.metadata?.Q12a_T4 ||
+          "";
         console.log("approvalStatus", approvalStatus);
         const decision =
-          approvalStatus === "Y"
+          approvalStatus === "Yes" || approvalStatus === "Y"
             ? ("approved" as const)
             : ("rejected" as const);
 
@@ -665,10 +678,15 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   useEffect(() => {
     const transformedCases: SimilarJustification[] = matches.map((match) => {
       const approvalStatus =
-        match.approvalStatus || match.metadata?.Q12a_T4 || "";
+        match.approvalStatus ||
+        match.metadata?.Q12a ||
+        match.metadata?.Q12a_T4 ||
+        "";
       console.log("approvalStatus", approvalStatus);
       const decision =
-        approvalStatus === "Y" ? ("approved" as const) : ("rejected" as const);
+        approvalStatus === "Yes" || approvalStatus === "Y"
+          ? ("approved" as const)
+          : ("rejected" as const);
 
       return {
         id: match.id,
@@ -759,8 +777,8 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
               },
               srcField: "PA_Cat",
               datasetName: "Justification Creation",
-              datasetType: "justification-testing",
-              dstField: "RefL_Cat",
+              datasetType: "justification-data",
+              dstField: "PA_Cat",
               descriptionField: "desc",
             });
           } catch (err) {
@@ -777,9 +795,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
               .map((c) => ({
                 Justify: c.description || "Similar case found",
                 Prod_Name: c.name,
-                Status: c.metadata?.Q12a_T4 || "",
+                Status: c.metadata?.Q12a || c.metadata?.Q12a_T4 || "",
                 Model_Code: c.metadata?.Model_Code || "",
-                Desc: c.metadata?.RefL_Des || "",
+                Desc: c.metadata?.catalogueDesc || c.metadata?.RefL_Des || "",
               })) || [];
 
           const currentCase = selectedCase.catalogueData?.products;
@@ -1023,8 +1041,8 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
-                <div className="flex items-center gap-3 ml-auto">
-                  <div className="relative flex-1 sm:flex-initial sm:w-48">
+                <div className="flex items-center gap-2 ml-auto overflow-x-auto pb-2">
+                  <div className="relative min-w-48">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Search cases..."
@@ -1041,7 +1059,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       )
                     }
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-32 h-9">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1071,12 +1089,37 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="h-9 w-32"
+                  />
+                  <span className="text-muted-foreground text-sm whitespace-nowrap">
+                    to
+                  </span>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="h-9 w-32"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setStartDate("");
+                      setEndDate("");
+                    }}
+                    className="text-xs whitespace-nowrap"
+                  >
+                    Clear
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={refetchCases}
                     disabled={isLoadingCases}
-                    className="gap-2"
                   >
                     <RefreshCw
                       className={`w-4 h-4 ${isLoadingCases ? "animate-spin" : ""}`}
@@ -1120,6 +1163,9 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                         </TableHead>
                         <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
                           Status
+                        </TableHead>
+                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                          Updated Date
                         </TableHead>
                         <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
                           Product Name
@@ -1211,7 +1257,34 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                             statusMatch = true;
                           }
 
-                          return searchMatch && statusMatch;
+                          // Filter by date range
+                          let dateMatch = true;
+                          if (startDate || endDate) {
+                            if (caseItem.updatedAt) {
+                              const caseDateTime = new Date(
+                                caseItem.updatedAt,
+                              ).getTime();
+                              if (startDate) {
+                                const startDateTime = new Date(
+                                  startDate,
+                                ).getTime();
+                                if (caseDateTime < startDateTime) {
+                                  dateMatch = false;
+                                }
+                              }
+                              if (endDate) {
+                                const endDateTime = new Date(endDate);
+                                endDateTime.setHours(23, 59, 59, 999);
+                                if (caseDateTime > endDateTime.getTime()) {
+                                  dateMatch = false;
+                                }
+                              }
+                            } else {
+                              dateMatch = false;
+                            }
+                          }
+
+                          return searchMatch && statusMatch && dateMatch;
                         })
                         .map((caseItem) => {
                           const isSelected = selectedProducts.includes(
@@ -1284,6 +1357,20 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                                     .replace("_", " ")
                                     .toUpperCase()}
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm whitespace-nowrap px-4 bg-primary/5">
+                                {caseItem.updatedAt
+                                  ? new Date(
+                                      caseItem.updatedAt,
+                                    ).toLocaleDateString() +
+                                    " " +
+                                    new Date(
+                                      caseItem.updatedAt,
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "—"}
                               </TableCell>
                               <TableCell className="font-medium whitespace-nowrap px-4 bg-primary/5">
                                 {productName}
@@ -1472,7 +1559,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
             </Card>
           )}
 
-          {similarCaseAnalysis?.cases?.length && !isLoadingSimilarCases && (
+          {similarCaseAnalysis?.cases?.length > 0 && !isLoadingSimilarCases && (
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -1602,7 +1689,8 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                     {similarCaseAnalysis.cases.map((caseItem) => (
                       <div
                         key={caseItem.id}
-                        className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                        className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => handleOpenSimilarCaseModal(caseItem)}
                       >
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
@@ -1622,9 +1710,10 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
-                              onClick={() =>
-                                handleCopy(caseItem.id, caseItem.justification)
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopy(caseItem.id, caseItem.justification);
+                              }}
                               title="Copy Justification"
                             >
                               {copiedId === caseItem.id ? (
@@ -2121,6 +2210,221 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
           </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Similar Case Detail Modal */}
+      {selectedSimilarCaseDetail && (
+        <Dialog
+          open={isSimilarCaseModalOpen}
+          onOpenChange={setIsSimilarCaseModalOpen}
+        >
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between pr-4">
+                <div>
+                  <DialogTitle className="text-lg">
+                    {selectedSimilarCaseDetail.productName}
+                  </DialogTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Similar case details
+                  </p>
+                </div>
+                <Badge
+                  variant={
+                    selectedSimilarCaseDetail.decision === "approved"
+                      ? "default"
+                      : "destructive"
+                  }
+                  className={cn(
+                    "text-xs",
+                    selectedSimilarCaseDetail.decision === "approved" &&
+                      "bg-success text-success-foreground",
+                  )}
+                >
+                  {selectedSimilarCaseDetail.decision.toUpperCase()}
+                </Badge>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Similarity Score */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-muted/50 border">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Similarity Score
+                  </p>
+                  <p className="text-2xl font-bold text-primary">
+                    {Math.round(selectedSimilarCaseDetail.similarity * 100)}%
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50 border">
+                  <p className="text-xs text-muted-foreground mb-1">Category</p>
+                  <p className="text-sm font-medium">
+                    {selectedSimilarCaseDetail.category}
+                  </p>
+                </div>
+              </div>
+
+              {/* Approval Status */}
+              {selectedSimilarCaseDetail.approvalStatus && (
+                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                  <p className="text-xs text-blue-600 font-medium mb-1">
+                    Approval Status
+                  </p>
+                  <p className="text-sm text-blue-900">
+                    Q12a: {selectedSimilarCaseDetail.approvalStatus}
+                  </p>
+                </div>
+              )}
+
+              {/* Q12 Fields */}
+              {selectedSimilarCaseDetail.metadata && (
+                <div className="space-y-4 p-4 rounded-lg bg-gradient-to-br from-blue-50 to-slate-50 border border-blue-100">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Procurement Details
+                  </p>
+
+                  {/* Short fields grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* {selectedSimilarCaseDetail.metadata.Q12a && (
+                      <div className="bg-white p-3 rounded border border-blue-100">
+                        <p className="text-xs font-medium text-slate-600 mb-1">
+                          Q12a - Approval
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {selectedSimilarCaseDetail.metadata.Q12a}
+                        </p>
+                      </div>
+                    )} */}
+                    {selectedSimilarCaseDetail.metadata.Q12c_TotC !==
+                      undefined && (
+                      <div className="bg-white p-3 rounded border border-blue-100">
+                        <p className="text-xs font-medium text-slate-600 mb-1">
+                          Q12c - Total Cost
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {selectedSimilarCaseDetail.metadata.Q12c_TotC}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Full-width long-form fields */}
+                  {/* {selectedSimilarCaseDetail.metadata.Q12b_Jus && (
+                    <div className="bg-white p-3 rounded border border-blue-100">
+                      <p className="text-xs font-medium text-slate-600 mb-2">
+                        Q12b - Justification
+                      </p>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        {selectedSimilarCaseDetail.metadata.Q12b_Jus}
+                      </p>
+                    </div>
+                  )} */}
+
+                  {selectedSimilarCaseDetail.metadata.Q12d_Quo && (
+                    <div className="bg-white p-3 rounded border border-blue-100">
+                      <p className="text-xs font-medium text-slate-600 mb-2">
+                        Q12d - Quotation Details
+                      </p>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        {selectedSimilarCaseDetail.metadata.Q12d_Quo}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedSimilarCaseDetail.metadata.Q12e_JCost && (
+                    <div className="bg-white p-3 rounded border border-blue-100">
+                      <p className="text-xs font-medium text-slate-600 mb-2">
+                        Q12e - Justification Cost
+                      </p>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        {selectedSimilarCaseDetail.metadata.Q12e_JCost}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedSimilarCaseDetail.metadata.Q12f_RReject && (
+                    <div className="bg-white p-3 rounded border border-red-100 bg-red-50/30">
+                      <p className="text-xs font-medium text-red-700 mb-2">
+                        Q12f - Reason for Rejection
+                      </p>
+                      <p className="text-sm text-red-900 leading-relaxed">
+                        {selectedSimilarCaseDetail.metadata.Q12f_RReject}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Justification */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Justification</Label>
+                <div className="p-4 rounded-lg bg-muted/50 border min-h-24 max-h-40 overflow-y-auto">
+                  <p className="text-sm text-foreground whitespace-pre-wrap">
+                    {selectedSimilarCaseDetail.justification}
+                  </p>
+                </div>
+              </div>
+
+              {/* Metadata */}
+              {selectedSimilarCaseDetail.metadata && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Additional Metadata
+                  </Label>
+                  <div className="p-3 rounded-lg bg-muted/30 border max-h-40 overflow-y-auto">
+                    {Object.entries(selectedSimilarCaseDetail.metadata).map(
+                      ([key, value]) => (
+                        <div
+                          key={key}
+                          className="flex justify-between gap-4 py-1 text-xs border-b last:border-b-0"
+                        >
+                          <span className="font-medium text-muted-foreground">
+                            {key}:
+                          </span>
+                          <span className="text-right text-foreground">
+                            {String(value)}
+                          </span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  handleCopy(
+                    selectedSimilarCaseDetail.id,
+                    selectedSimilarCaseDetail.justification,
+                  );
+                }}
+                className="gap-2"
+              >
+                {copiedId === selectedSimilarCaseDetail.id ? (
+                  <>
+                    <Check className="h-4 w-4 text-green-500" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Copy Justification
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => setIsSimilarCaseModalOpen(false)}
+                className="gap-2"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

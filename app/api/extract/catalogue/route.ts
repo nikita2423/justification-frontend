@@ -1,4 +1,4 @@
-import { PYTHON_BACKEND_URL } from "@/lib/utils";
+import { NEXT_PUBLIC_API_URL, PYTHON_BACKEND_URL } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     backendFormData.append("file", file, file.name);
 
     const backendResponse = await fetch(
-      `${PYTHON_BACKEND_URL}/extract/catalogue`,
+      `${NEXT_PUBLIC_API_URL}/api/extraction/extract-catalogue`,
       {
         method: "POST",
         body: backendFormData,

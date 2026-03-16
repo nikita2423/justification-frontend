@@ -1,4 +1,4 @@
-import { PYTHON_BACKEND_URL } from "@/lib/utils";
+import { NEXT_PUBLIC_API_URL, PYTHON_BACKEND_URL } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     // Get backend URL from environment variable
     const backendUrl = PYTHON_BACKEND_URL;
-    const endpoint = `${backendUrl}/suggest/justification`;
+    const endpoint = `${NEXT_PUBLIC_API_URL}/api/extraction/suggest-justification`;
 
     const response = await fetch(endpoint, {
       method: "POST",
