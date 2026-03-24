@@ -1783,112 +1783,123 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
               </div>
             </CardHeader>
             <CardContent>
-              {isGeneratingJustification ? (
-                <div className="flex flex-col items-center justify-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Generating justification...
-                  </p>
-                </div>
-              ) : generatedJustification ? (
-                <div className="space-y-4">
-                  <div
-                    className={cn(
-                      "flex items-center gap-2 p-2 rounded-lg",
-                      pendingDecision === "approved"
-                        ? "bg-success/10 text-success"
-                        : "bg-destructive/10 text-destructive",
+              {selectedProducts.length > 0 ? (
+                <>
+                  {isGeneratingJustification && (
+                    <div className="flex items-center gap-2 py-2 mb-3">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">
+                        Generating justification...
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    {pendingDecision && (
+                      <div
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-lg",
+                          pendingDecision === "approved"
+                            ? "bg-success/10 text-success"
+                            : "bg-destructive/10 text-destructive",
+                        )}
+                      >
+                        {pendingDecision === "approved" ? (
+                          <ThumbsUp className="w-4 h-4" />
+                        ) : (
+                          <ThumbsDown className="w-4 h-4" />
+                        )}
+                        <span className="font-medium text-sm capitalize">
+                          {pendingDecision} Decision
+                        </span>
+                      </div>
                     )}
-                  >
-                    {pendingDecision === "approved" ? (
-                      <ThumbsUp className="w-4 h-4" />
-                    ) : (
-                      <ThumbsDown className="w-4 h-4" />
+
+                    <Textarea
+                      placeholder="Enter your justification here or use AI to generate one..."
+                      value={generatedJustification}
+                      onChange={(e) =>
+                        setGeneratedJustification(e.target.value)
+                      }
+                      rows={16}
+                      className="text-sm min-h-[300px]"
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={
+                          pendingDecision === "approved" ? "default" : "outline"
+                        }
+                        size="sm"
+                        onClick={() => setPendingDecision("approved")}
+                        className={cn(
+                          "gap-1 flex-1",
+                          pendingDecision === "approved"
+                            ? "bg-success hover:bg-success/90 text-success-foreground"
+                            : "",
+                        )}
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        Approved
+                      </Button>
+                      <Button
+                        variant={
+                          pendingDecision === "rejected" ? "default" : "outline"
+                        }
+                        size="sm"
+                        onClick={() => setPendingDecision("rejected")}
+                        className={cn(
+                          "gap-1 flex-1",
+                          pendingDecision === "rejected"
+                            ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                            : "",
+                        )}
+                      >
+                        <XCircle className="w-3 h-3" />
+                        Rejected
+                      </Button>
+                    </div>
+
+                    {pendingDecision && generatedJustification && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleGenerateJustification(pendingDecision!)
+                          }
+                          className="gap-1"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Regenerate
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleConfirmDecision}
+                          className={cn(
+                            "flex-1 gap-1",
+                            pendingDecision === "approved"
+                              ? "bg-success hover:bg-success/90 text-success-foreground"
+                              : "bg-destructive hover:bg-destructive/90",
+                          )}
+                        >
+                          Confirm{" "}
+                          {pendingDecision === "approved"
+                            ? "Approval"
+                            : "Rejection"}
+                        </Button>
+                      </div>
                     )}
-                    <span className="font-medium text-sm capitalize">
-                      {pendingDecision} Decision
-                    </span>
                   </div>
-
-                  <Textarea
-                    value={generatedJustification}
-                    onChange={(e) => setGeneratedJustification(e.target.value)}
-                    rows={8}
-                    className="text-sm"
-                  />
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={
-                        pendingDecision === "approved" ? "default" : "outline"
-                      }
-                      size="sm"
-                      onClick={() => setPendingDecision("approved")}
-                      className={cn(
-                        "gap-1 flex-1",
-                        pendingDecision === "approved"
-                          ? "bg-success hover:bg-success/90 text-success-foreground"
-                          : "",
-                      )}
-                    >
-                      <CheckCircle2 className="w-3 h-3" />
-                      Approved
-                    </Button>
-                    <Button
-                      variant={
-                        pendingDecision === "rejected" ? "default" : "outline"
-                      }
-                      size="sm"
-                      onClick={() => setPendingDecision("rejected")}
-                      className={cn(
-                        "gap-1 flex-1",
-                        pendingDecision === "rejected"
-                          ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                          : "",
-                      )}
-                    >
-                      <XCircle className="w-3 h-3" />
-                      Rejected
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        handleGenerateJustification(pendingDecision!)
-                      }
-                      className="gap-1"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Regenerate
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleConfirmDecision}
-                      className={cn(
-                        "flex-1 gap-1",
-                        pendingDecision === "approved"
-                          ? "bg-success hover:bg-success/90 text-success-foreground"
-                          : "bg-destructive hover:bg-destructive/90",
-                      )}
-                    >
-                      Confirm{" "}
-                      {pendingDecision === "approved"
-                        ? "Approval"
-                        : "Rejection"}
-                    </Button>
-                  </div>
-                </div>
+                </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="w-8 h-8 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">
-                    Select products and choose an action
+                    Select a case to enter justification
                   </p>
                   <p className="text-xs mt-1">
-                    AI will generate a justification
+                    You can write your own or use AI to generate one
                   </p>
                 </div>
               )}
