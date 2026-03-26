@@ -7,8 +7,11 @@ const BACKEND_IP = "35.240.222.126"; // new google server
 
 export const NEXT_PUBLIC_API_URL = `http://${BACKEND_IP}`;
 export const PYTHON_BACKEND_URL = `http://${BACKEND_IP}:8000`;
+// export const CLOUDFRONT_URL =
+//   "https://jpeg-phd-innovations-austin.trycloudflare.com";
+
 export const CLOUDFRONT_URL =
-  "https://jpeg-phd-innovations-austin.trycloudflare.com";
+  "https://costume-equally-tired-connected.trycloudflare.com";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
