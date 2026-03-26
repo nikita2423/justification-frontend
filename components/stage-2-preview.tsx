@@ -153,7 +153,12 @@ function EditDialog({ product, isOpen, onClose, onSave }: EditDialogProps) {
       key === "Recd_Quo" ||
       key === "Recd_Cat" ||
       key === "Req_I_SWD_YN" ||
-      key === "Req_RepSWD_YN" ||
+      key === "Req_RepSWD_YN"
+    ) {
+      return "Yes";
+    }
+    if (
+      key === "Ret_Rept" ||
       key === "RecdCurrWk_YN" ||
       key === "EGF_Ready_YN" ||
       key === "EGF_To_EG_YN" ||
@@ -161,9 +166,6 @@ function EditDialog({ product, isOpen, onClose, onSave }: EditDialogProps) {
       key === "EGF_To_SWD_YN" ||
       key === "FUF_Comp_YN"
     ) {
-      return "Yes";
-    }
-    if (key === "Ret_Rept") {
       return "NO";
     }
     if (key === "DatEntry") {
@@ -671,7 +673,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
         // Special case for App_Cat to fallback to product category
         const egVal = product.applicationData?.data?.["PA_RefL"];
         if (egVal !== undefined && egVal === "Yes") return "Procurement";
-        else return "/";
+        else return "Procurement";
       }
       if (
         key === "Recd_EGF" ||
@@ -679,7 +681,12 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
         key === "Recd_Quo" ||
         key === "Recd_Cat" ||
         key === "Req_I_SWD_YN" ||
-        key === "Req_RepSWD_YN" ||
+        key === "Req_RepSWD_YN"
+      ) {
+        return "Yes";
+      }
+      if (
+        key === "Ret_Rept" ||
         key === "RecdCurrWk_YN" ||
         key === "EGF_Ready_YN" ||
         key === "EGF_To_EG_YN" ||
@@ -687,9 +694,6 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
         key === "EGF_To_SWD_YN" ||
         key === "FUF_Comp_YN"
       ) {
-        return "Yes";
-      }
-      if (key === "Ret_Rept") {
         return "NO";
       }
       if (key === "DatEntry") {
@@ -796,7 +800,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
         // Special case for App_Cat to fallback to product category
         const egVal = product.applicationData?.data?.["PA_RefL"];
         if (egVal !== undefined && egVal === "Yes") return "Procurement";
-        else return "/";
+        else return "Procurement";
       }
       if (
         key === "Recd_EGF" ||
@@ -804,7 +808,12 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
         key === "Recd_Quo" ||
         key === "Recd_Cat" ||
         key === "Req_I_SWD_YN" ||
-        key === "Req_RepSWD_YN" ||
+        key === "Req_RepSWD_YN"
+      ) {
+        return "Yes";
+      }
+      if (
+        key === "Ret_Rept" ||
         key === "RecdCurrWk_YN" ||
         key === "EGF_Ready_YN" ||
         key === "EGF_To_EG_YN" ||
@@ -812,9 +821,6 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
         key === "EGF_To_SWD_YN" ||
         key === "FUF_Comp_YN"
       ) {
-        return "Yes";
-      }
-      if (key === "Ret_Rept") {
         return "NO";
       }
       if (key === "DatEntry") {
@@ -1087,7 +1093,12 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                       key === "Recd_Quo" ||
                       key === "Recd_Cat" ||
                       key === "Req_I_SWD_YN" ||
-                      key === "Req_RepSWD_YN" ||
+                      key === "Req_RepSWD_YN"
+                    ) {
+                      return "Yes";
+                    }
+                    if (
+                      key === "Ret_Rept" ||
                       key === "RecdCurrWk_YN" ||
                       key === "EGF_Ready_YN" ||
                       key === "EGF_To_EG_YN" ||
@@ -1095,9 +1106,6 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
                       key === "EGF_To_SWD_YN" ||
                       key === "FUF_Comp_YN"
                     ) {
-                      return "Yes";
-                    }
-                    if (key === "Ret_Rept") {
                       return "NO";
                     }
                     if (key === "DatEntry") {
