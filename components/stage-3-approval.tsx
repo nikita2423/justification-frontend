@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -1144,326 +1145,327 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                   </span>
                 </div>
               ) : cases.length > 0 ? (
-                <div className="rounded-lg border overflow-hidden overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="w-12 sticky left-0 bg-muted/50 z-10">
-                          <Checkbox
-                            checked={
-                              selectedProducts.length === cases.length &&
-                              cases.length > 0
-                            }
-                            onCheckedChange={handleSelectAll}
-                          />
-                        </TableHead>
-                        {/* Priority columns first */}
-                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
-                          Case Number
-                        </TableHead>
-                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
-                          Status
-                        </TableHead>
-                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
-                          Updated Date
-                        </TableHead>
-                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
-                          Product Name
-                        </TableHead>
-                        <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
-                          Ref No
-                        </TableHead>
-                        {/* Other EG data columns */}
-                        {[
-                          "App_No",
-                          "Tranche",
-                          "EB_RM",
-                          "NO",
-                          "NO_R",
-                          "Staff",
-                          "D_ReqF_SWD",
-                          "D_PlnT_SWD",
-                          "D_EGF_Out",
-                          "D_EGF_Dead",
-                          "SWD_Off_N",
-                          "SWD_Off_P",
-                          "SWD_Off_I",
-                          "App_Type",
-                          "App_Cat",
-                          "Rem_RA",
-                          "Recd_EGF",
-                          "Recd_PAF",
-                          "Recd_Quo",
-                          "Recd_Cat",
-                          "Ret_Rept",
-                          "MRef",
-                          "Req_I_SWD_YN",
-                          "D_ReqT_SWD",
-                          "Req_RepSWD_YN",
-                          "D_RetF_SWD",
-                          "Rem_Req",
-                          "D_WkRep",
-                          "WkRep_Status",
-                          "WkRep_Rem",
-                          "RecdCurrWk_YN",
-                          "EGF_Ready_YN",
-                          "EGF_To_EG_YN",
-                          "D_EGF_T_EG",
-                          "EG_Reply_YN",
-                          "D_EG_Reply",
-                          "Rem_EG",
-                          "EGF_To_SWD_YN",
-                          "D_EGF_ASWD",
-                          "FUF_Comp_YN",
-                          "DatEntry",
-                        ].map((col) => (
-                          <TableHead
-                            key={col}
-                            className="whitespace-nowrap px-4"
-                          >
-                            {col}
+                <div className="rounded-lg border overflow-auto max-h-[600px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-12 sticky left-0 bg-muted/50 z-10">
+                            <Checkbox
+                              checked={
+                                selectedProducts.length === cases.length &&
+                                cases.length > 0
+                              }
+                              onCheckedChange={handleSelectAll}
+                            />
                           </TableHead>
-                        ))}
-                        {/* Sticky Actions Column Header */}
-                        <TableHead className="sticky right-0 whitespace-nowrap px-4 bg-muted/50 border-l font-semibold w-20 z-10">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {cases
-                        .filter((caseItem) => {
-                          // Filter by search query and status
-                          const searchLower = searchQuery.toLowerCase();
-                          const productName =
-                            caseItem.egData?.App_PNam_Mod ||
-                            caseItem.applicationData?.PA_PName ||
-                            "";
-                          const searchMatch =
-                            caseItem.caseNumber
-                              .toLowerCase()
-                              .includes(searchLower) ||
-                            productName.toLowerCase().includes(searchLower);
-
-                          // Filter by status: all, pending, approved, or rejected
-                          let statusMatch = true;
-                          if (statusFilter === "pending") {
-                            statusMatch = caseItem.status === "pending";
-                          } else if (statusFilter === "approved") {
-                            statusMatch = caseItem.status === "approved";
-                          } else if (statusFilter === "rejected") {
-                            statusMatch = caseItem.status === "rejected";
-                          } else if (statusFilter === "all") {
-                            statusMatch = true;
-                          }
-
-                          // Filter by date range
-                          let dateMatch = true;
-                          if (startDate || endDate) {
-                            if (caseItem.updatedAt) {
-                              const caseDateTime = new Date(
-                                caseItem.updatedAt,
-                              ).getTime();
-                              if (startDate) {
-                                const startDateTime = new Date(
-                                  startDate,
-                                ).getTime();
-                                if (caseDateTime < startDateTime) {
-                                  dateMatch = false;
-                                }
-                              }
-                              if (endDate) {
-                                const endDateTime = new Date(endDate);
-                                endDateTime.setHours(23, 59, 59, 999);
-                                if (caseDateTime > endDateTime.getTime()) {
-                                  dateMatch = false;
-                                }
-                              }
-                            } else {
-                              dateMatch = false;
-                            }
-                          }
-
-                          return searchMatch && statusMatch && dateMatch;
-                        })
-                        .map((caseItem) => {
-                          const isSelected = selectedProducts.includes(
-                            caseItem.id,
-                          );
-
-                          // Extract product name from egData or applicationData
-                          const productName =
-                            caseItem.egData?.App_PNam_Mod ||
-                            caseItem.applicationData?.PA_PName ||
-                            "—";
-
-                          // Extract ref number from egData
-                          const refNo =
-                            caseItem.egData?.Ref ||
-                            caseItem.egData?.SWD_Ref ||
-                            "—";
-
-                          const getData = (key: string) => {
-                            const egVal = caseItem.egData?.[key];
-                            if (
-                              egVal !== undefined &&
-                              egVal !== null &&
-                              egVal !== ""
-                            )
-                              return egVal;
-                            return "—";
-                          };
-
-                          const statusColors = {
-                            pending:
-                              "bg-yellow-100 text-yellow-800 border-yellow-300",
-                            approved:
-                              "bg-green-100 text-green-800 border-green-300",
-                            rejected: "bg-red-100 text-red-800 border-red-300",
-                            under_review:
-                              "bg-blue-100 text-blue-800 border-blue-300",
-                          };
-
-                          return (
-                            <TableRow
-                              key={caseItem.id}
-                              className={cn(
-                                "cursor-pointer transition-colors",
-                                isSelected && "bg-primary/5",
-                              )}
-                              onClick={() => handleSelectProduct(caseItem.id)}
+                          {/* Priority columns first */}
+                          <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                            Case Number
+                          </TableHead>
+                          <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                            Status
+                          </TableHead>
+                          <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                            Updated Date
+                          </TableHead>
+                          <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                            Product Name
+                          </TableHead>
+                          <TableHead className="font-semibold whitespace-nowrap px-4 bg-primary/5">
+                            Ref No
+                          </TableHead>
+                          {/* Other EG data columns */}
+                          {[
+                            "App_No",
+                            "Tranche",
+                            "EB_RM",
+                            "NO",
+                            "NO_R",
+                            "Staff",
+                            "D_ReqF_SWD",
+                            "D_PlnT_SWD",
+                            "D_EGF_Out",
+                            "D_EGF_Dead",
+                            "SWD_Off_N",
+                            "SWD_Off_P",
+                            "SWD_Off_I",
+                            "App_Type",
+                            "App_Cat",
+                            "Rem_RA",
+                            "Recd_EGF",
+                            "Recd_PAF",
+                            "Recd_Quo",
+                            "Recd_Cat",
+                            "Ret_Rept",
+                            "MRef",
+                            "Req_I_SWD_YN",
+                            "D_ReqT_SWD",
+                            "Req_RepSWD_YN",
+                            "D_RetF_SWD",
+                            "Rem_Req",
+                            "D_WkRep",
+                            "WkRep_Status",
+                            "WkRep_Rem",
+                            "RecdCurrWk_YN",
+                            "EGF_Ready_YN",
+                            "EGF_To_EG_YN",
+                            "D_EGF_T_EG",
+                            "EG_Reply_YN",
+                            "D_EG_Reply",
+                            "Rem_EG",
+                            "EGF_To_SWD_YN",
+                            "D_EGF_ASWD",
+                            "FUF_Comp_YN",
+                            "DatEntry",
+                          ].map((col) => (
+                            <TableHead
+                              key={col}
+                              className="whitespace-nowrap px-4"
                             >
-                              <TableCell
-                                className="sticky left-0 bg-background z-10"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={() =>
-                                    handleSelectProduct(caseItem.id)
+                              {col}
+                            </TableHead>
+                          ))}
+                          {/* Sticky Actions Column Header */}
+                          <TableHead className="sticky right-0 whitespace-nowrap px-4 bg-muted/50 border-l font-semibold w-20 z-10">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {cases
+                          .filter((caseItem) => {
+                            // Filter by search query and status
+                            const searchLower = searchQuery.toLowerCase();
+                            const productName =
+                              caseItem.egData?.App_PNam_Mod ||
+                              caseItem.applicationData?.PA_PName ||
+                              "";
+                            const searchMatch =
+                              caseItem.caseNumber
+                                .toLowerCase()
+                                .includes(searchLower) ||
+                              productName.toLowerCase().includes(searchLower);
+
+                            // Filter by status: all, pending, approved, or rejected
+                            let statusMatch = true;
+                            if (statusFilter === "pending") {
+                              statusMatch = caseItem.status === "pending";
+                            } else if (statusFilter === "approved") {
+                              statusMatch = caseItem.status === "approved";
+                            } else if (statusFilter === "rejected") {
+                              statusMatch = caseItem.status === "rejected";
+                            } else if (statusFilter === "all") {
+                              statusMatch = true;
+                            }
+
+                            // Filter by date range
+                            let dateMatch = true;
+                            if (startDate || endDate) {
+                              if (caseItem.updatedAt) {
+                                const caseDateTime = new Date(
+                                  caseItem.updatedAt,
+                                ).getTime();
+                                if (startDate) {
+                                  const startDateTime = new Date(
+                                    startDate,
+                                  ).getTime();
+                                  if (caseDateTime < startDateTime) {
+                                    dateMatch = false;
                                   }
-                                />
-                              </TableCell>
-                              {/* Priority columns */}
-                              <TableCell className="font-medium font-mono whitespace-nowrap px-4 bg-primary/5">
-                                {caseItem.caseNumber}
-                              </TableCell>
-                              <TableCell className="whitespace-nowrap px-4 bg-primary/5">
-                                <Badge
-                                  variant="outline"
-                                  className={statusColors[caseItem.status]}
-                                >
-                                  {caseItem.status
-                                    .replace("_", " ")
-                                    .toUpperCase()}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-sm whitespace-nowrap px-4 bg-primary/5">
-                                {caseItem.updatedAt
-                                  ? new Date(
-                                      caseItem.updatedAt,
-                                    ).toLocaleDateString() +
-                                    " " +
-                                    new Date(
-                                      caseItem.updatedAt,
-                                    ).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })
-                                  : "—"}
-                              </TableCell>
-                              <TableCell className="font-medium whitespace-nowrap px-4 bg-primary/5">
-                                {productName}
-                              </TableCell>
-                              <TableCell className="font-mono whitespace-nowrap px-4 bg-primary/5">
-                                {refNo}
-                              </TableCell>
-                              {/* Other EG data columns */}
-                              {[
-                                "App_No",
-                                "Tranche",
-                                "EB_RM",
-                                "NO",
-                                "NO_R",
-                                "Staff",
-                                "D_ReqF_SWD",
-                                "D_PlnT_SWD",
-                                "D_EGF_Out",
-                                "D_EGF_Dead",
-                                "SWD_Off_N",
-                                "SWD_Off_P",
-                                "SWD_Off_I",
-                                "App_Type",
-                                "App_Cat",
-                                "Rem_RA",
-                                "Recd_EGF",
-                                "Recd_PAF",
-                                "Recd_Quo",
-                                "Recd_Cat",
-                                "Ret_Rept",
-                                "MRef",
-                                "Req_I_SWD_YN",
-                                "D_ReqT_SWD",
-                                "Req_RepSWD_YN",
-                                "D_RetF_SWD",
-                                "Rem_Req",
-                                "D_WkRep",
-                                "WkRep_Status",
-                                "WkRep_Rem",
-                                "RecdCurrWk_YN",
-                                "EGF_Ready_YN",
-                                "EGF_To_EG_YN",
-                                "D_EGF_T_EG",
-                                "EG_Reply_YN",
-                                "D_EG_Reply",
-                                "Rem_EG",
-                                "EGF_To_SWD_YN",
-                                "D_EGF_ASWD",
-                                "FUF_Comp_YN",
-                                "DatEntry",
-                              ].map((col) => (
+                                }
+                                if (endDate) {
+                                  const endDateTime = new Date(endDate);
+                                  endDateTime.setHours(23, 59, 59, 999);
+                                  if (caseDateTime > endDateTime.getTime()) {
+                                    dateMatch = false;
+                                  }
+                                }
+                              } else {
+                                dateMatch = false;
+                              }
+                            }
+
+                            return searchMatch && statusMatch && dateMatch;
+                          })
+                          .map((caseItem) => {
+                            const isSelected = selectedProducts.includes(
+                              caseItem.id,
+                            );
+
+                            // Extract product name from egData or applicationData
+                            const productName =
+                              caseItem.egData?.App_PNam_Mod ||
+                              caseItem.applicationData?.PA_PName ||
+                              "—";
+
+                            // Extract ref number from egData
+                            const refNo =
+                              caseItem.egData?.Ref ||
+                              caseItem.egData?.SWD_Ref ||
+                              "—";
+
+                            const getData = (key: string) => {
+                              const egVal = caseItem.egData?.[key];
+                              if (
+                                egVal !== undefined &&
+                                egVal !== null &&
+                                egVal !== ""
+                              )
+                                return egVal;
+                              return "—";
+                            };
+
+                            const statusColors = {
+                              pending:
+                                "bg-yellow-100 text-yellow-800 border-yellow-300",
+                              approved:
+                                "bg-green-100 text-green-800 border-green-300",
+                              rejected:
+                                "bg-red-100 text-red-800 border-red-300",
+                              under_review:
+                                "bg-blue-100 text-blue-800 border-blue-300",
+                            };
+
+                            return (
+                              <TableRow
+                                key={caseItem.id}
+                                className={cn(
+                                  "cursor-pointer transition-colors",
+                                  isSelected && "bg-primary/5",
+                                )}
+                                onClick={() => handleSelectProduct(caseItem.id)}
+                              >
                                 <TableCell
-                                  key={col}
-                                  className="whitespace-nowrap px-4"
+                                  className="sticky left-0 bg-background z-10"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  {getData(col)}
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() =>
+                                      handleSelectProduct(caseItem.id)
+                                    }
+                                  />
                                 </TableCell>
-                              ))}
-                              {/* Sticky Actions Column */}
-                              <TableCell className="sticky right-0 whitespace-nowrap px-4 bg-background border-l z-20">
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditCase(caseItem);
-                                    }}
-                                    className="h-8 w-8"
-                                    title="Edit Case"
+                                {/* Priority columns */}
+                                <TableCell className="font-medium font-mono whitespace-nowrap px-4 bg-primary/5">
+                                  {caseItem.caseNumber}
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap px-4 bg-primary/5">
+                                  <Badge
+                                    variant="outline"
+                                    className={statusColors[caseItem.status]}
                                   >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenDeleteConfirm(caseItem.id);
-                                    }}
-                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    title="Delete Case"
-                                    disabled={isDeletingCase}
+                                    {caseItem.status
+                                      .replace("_", " ")
+                                      .toUpperCase()}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm whitespace-nowrap px-4 bg-primary/5">
+                                  {caseItem.updatedAt
+                                    ? new Date(
+                                        caseItem.updatedAt,
+                                      ).toLocaleDateString() +
+                                      " " +
+                                      new Date(
+                                        caseItem.updatedAt,
+                                      ).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "—"}
+                                </TableCell>
+                                <TableCell className="font-medium whitespace-nowrap px-4 bg-primary/5">
+                                  {productName}
+                                </TableCell>
+                                <TableCell className="font-mono whitespace-nowrap px-4 bg-primary/5">
+                                  {refNo}
+                                </TableCell>
+                                {/* Other EG data columns */}
+                                {[
+                                  "App_No",
+                                  "Tranche",
+                                  "EB_RM",
+                                  "NO",
+                                  "NO_R",
+                                  "Staff",
+                                  "D_ReqF_SWD",
+                                  "D_PlnT_SWD",
+                                  "D_EGF_Out",
+                                  "D_EGF_Dead",
+                                  "SWD_Off_N",
+                                  "SWD_Off_P",
+                                  "SWD_Off_I",
+                                  "App_Type",
+                                  "App_Cat",
+                                  "Rem_RA",
+                                  "Recd_EGF",
+                                  "Recd_PAF",
+                                  "Recd_Quo",
+                                  "Recd_Cat",
+                                  "Ret_Rept",
+                                  "MRef",
+                                  "Req_I_SWD_YN",
+                                  "D_ReqT_SWD",
+                                  "Req_RepSWD_YN",
+                                  "D_RetF_SWD",
+                                  "Rem_Req",
+                                  "D_WkRep",
+                                  "WkRep_Status",
+                                  "WkRep_Rem",
+                                  "RecdCurrWk_YN",
+                                  "EGF_Ready_YN",
+                                  "EGF_To_EG_YN",
+                                  "D_EGF_T_EG",
+                                  "EG_Reply_YN",
+                                  "D_EG_Reply",
+                                  "Rem_EG",
+                                  "EGF_To_SWD_YN",
+                                  "D_EGF_ASWD",
+                                  "FUF_Comp_YN",
+                                  "DatEntry",
+                                ].map((col) => (
+                                  <TableCell
+                                    key={col}
+                                    className="whitespace-nowrap px-4"
                                   >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
+                                    {getData(col)}
+                                  </TableCell>
+                                ))}
+                                {/* Sticky Actions Column */}
+                                <TableCell className="sticky right-0 whitespace-nowrap px-4 bg-background border-l z-20">
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditCase(caseItem);
+                                      }}
+                                      className="h-8 w-8"
+                                      title="Edit Case"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenDeleteConfirm(caseItem.id);
+                                      }}
+                                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      title="Delete Case"
+                                      disabled={isDeletingCase}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                      </TableBody>
+                    </Table>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
