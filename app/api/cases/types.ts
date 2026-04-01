@@ -10,6 +10,7 @@ export interface CreateCaseDto {
   egData?: Record<string, any>;
   applicationData?: Record<string, any>;
   categoryId?: string;
+  tranche?: string;
 }
 
 export interface CreateCaseResponse {

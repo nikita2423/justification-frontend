@@ -632,6 +632,7 @@ export function Stage2Preview({ onNext, onBack }: Stage2PreviewProps) {
             egData: product.egData?.data || {},
             applicationData: product.applicationData?.data || {},
             categoryId: product.category || undefined,
+            tranche: product.tranch || undefined,
           };
 
           console.log(`Creating case for product ${product.name}:`, caseNumber);
