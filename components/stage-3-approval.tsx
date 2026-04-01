@@ -993,10 +993,14 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
 
   const handleSelectProduct = useCallback(
     (productId: string) => {
-      clearSelection();
-      toggleProductSelection(productId);
+      if (selectedProducts.length === 1 && selectedProducts[0] === productId) {
+        clearSelection();
+      } else {
+        clearSelection();
+        toggleProductSelection(productId);
+      }
     },
-    [clearSelection, toggleProductSelection],
+    [selectedProducts, clearSelection, toggleProductSelection],
   );
 
   const approvedCount = cases.filter((c) => c.status === "approved").length;
@@ -1110,8 +1114,15 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => {
+                      setSearchQuery("");
                       setStartDate("");
                       setEndDate("");
+                      setStatusFilter("pending");
+                      clearSelection();
+                      setGeneratedJustification("");
+                      setPendingDecision(null);
+                      setSimilarCaseAnalysis(null);
+                      setSimilarJustifications([]);
                     }}
                     className="text-xs whitespace-nowrap"
                   >
@@ -1146,7 +1157,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                   </span>
                 </div>
               ) : cases.length > 0 ? (
-                <div className="rounded-lg border overflow-auto max-h-[600px]">
+                <div className="rounded-lg border overflow-auto max-h-[250px]">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
@@ -1341,9 +1352,13 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                               >
                                 <Checkbox
                                   checked={isSelected}
-                                  onCheckedChange={() =>
-                                    handleSelectProduct(caseItem.id)
-                                  }
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      handleSelectProduct(caseItem.id);
+                                    } else {
+                                      clearSelection();
+                                    }
+                                  }}
                                 />
                               </TableCell>
                               {/* Priority columns */}
