@@ -814,6 +814,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                 similar_matches: similarMatches,
                 current_case: currentCase,
                 application_data: appData,
+                action: decision,
               }),
             });
 
@@ -1841,41 +1842,6 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       rows={16}
                       className="text-sm min-h-[300px]"
                     />
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={
-                          pendingDecision === "approved" ? "default" : "outline"
-                        }
-                        size="sm"
-                        onClick={() => setPendingDecision("approved")}
-                        className={cn(
-                          "gap-1 flex-1",
-                          pendingDecision === "approved"
-                            ? "bg-success hover:bg-success/90 text-success-foreground"
-                            : "",
-                        )}
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        Approved
-                      </Button>
-                      <Button
-                        variant={
-                          pendingDecision === "rejected" ? "default" : "outline"
-                        }
-                        size="sm"
-                        onClick={() => setPendingDecision("rejected")}
-                        className={cn(
-                          "gap-1 flex-1",
-                          pendingDecision === "rejected"
-                            ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                            : "",
-                        )}
-                      >
-                        <XCircle className="w-3 h-3" />
-                        Rejected
-                      </Button>
-                    </div>
 
                     {pendingDecision && generatedJustification && (
                       <div className="flex items-center gap-2">

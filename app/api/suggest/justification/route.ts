@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { similar_matches, current_case, application_data } = body;
+    const { similar_matches, current_case, application_data, action } = body;
 
     if (!current_case) {
       return NextResponse.json(
@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
         similar_matches: similar_matches || [],
         current_case: current_case,
         application_data: application_data || {},
+        action: action,
       }),
     });
 
