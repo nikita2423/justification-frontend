@@ -1640,7 +1640,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                 </div>
 
                 {/* Common Factors */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium text-success">
                       <CheckCircle2 className="w-4 h-4" />
@@ -1679,7 +1679,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       )}
                     </ul>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Individual Cases */}
                 <div className="space-y-2">
