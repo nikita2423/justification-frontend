@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import {
   CheckCircle2,
   XCircle,
+  X,
   ChevronLeft,
   Sparkles,
   Search,
@@ -353,6 +354,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending" | "approved" | "rejected"
   >("pending");
+  const [trancheFilter, setTrancheFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [generatedJustification, setGeneratedJustification] = useState("");
@@ -824,17 +826,17 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
               justifications.push(result?.data?.justification || "");
             } else {
               // Fallback to mock if API fails
-              const mockProduct = {
-                id: selectedCase.id,
-                name: productName,
-                sku: selectedCase.caseNumber,
-                category: category,
-              } as Product;
-              const justification = await generateJustification(
-                [mockProduct],
-                decision,
-              );
-              justifications.push(justification);
+              // const mockProduct = {
+              //   id: selectedCase.id,
+              //   name: productName,
+              //   sku: selectedCase.caseNumber,
+              //   category: category,
+              // } as Product;
+              // const justification = await generateJustification(
+              //   [mockProduct],
+              //   decision,
+              // );
+              // justifications.push(justification);
             }
           } catch (error) {
             console.error(
@@ -1033,6 +1035,18 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
           <Badge variant="secondary" className="gap-1">
             {pendingCount} pending
           </Badge>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={refetchCases}
+            disabled={isLoadingCases}
+            className="h-8 w-8"
+            title="Refresh cases"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isLoadingCases ? "animate-spin" : ""}`}
+            />
+          </Button>
         </div>
       </div>
 
@@ -1042,12 +1056,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
           <Card>
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <CardTitle className="text-lg">Cases</CardTitle>
-                  {isLoadingCases && (
-                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
+                <CardTitle className="text-lg">Cases</CardTitle>
                 <div className="flex items-center gap-2 ml-auto overflow-x-auto pb-2">
                   <div className="relative min-w-48">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1096,6 +1105,33 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select
+                    value={trancheFilter}
+                    onValueChange={setTrancheFilter}
+                  >
+                    <SelectTrigger className="w-32 h-9">
+                      <SelectValue placeholder="Tranche" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tranches</SelectItem>
+                      {[
+                        ...new Set(
+                          cases
+                            .map((c) => c.egData?.Tranche)
+                            .filter(
+                              (t) => t !== undefined && t !== null && t !== "",
+                            ),
+                        ),
+                      ].map((tranche) => (
+                        <SelectItem
+                          key={String(tranche)}
+                          value={String(tranche)}
+                        >
+                          {tranche}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     type="date"
                     value={startDate}
@@ -1113,31 +1149,23 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                   />
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     onClick={() => {
                       setSearchQuery("");
                       setStartDate("");
                       setEndDate("");
                       setStatusFilter("pending");
+                      setTrancheFilter("all");
                       clearSelection();
                       setGeneratedJustification("");
                       setPendingDecision(null);
                       setSimilarCaseAnalysis(null);
                       setSimilarJustifications([]);
                     }}
-                    className="text-xs whitespace-nowrap"
+                    className="h-9 w-9 shrink-0"
+                    title="Clear filters"
                   >
-                    Clear
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={refetchCases}
-                    disabled={isLoadingCases}
-                  >
-                    <RefreshCw
-                      className={`w-4 h-4 ${isLoadingCases ? "animate-spin" : ""}`}
-                    />
+                    <X className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -1298,7 +1326,16 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                             }
                           }
 
-                          return searchMatch && statusMatch && dateMatch;
+                          const trancheMatch =
+                            trancheFilter === "all" ||
+                            String(caseItem.egData?.Tranche) === trancheFilter;
+
+                          return (
+                            searchMatch &&
+                            statusMatch &&
+                            dateMatch &&
+                            trancheMatch
+                          );
                         })
                         .map((caseItem) => {
                           const isSelected = selectedProducts.includes(
@@ -1590,7 +1627,7 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                         Similar Cases Analysis
                       </CardTitle>
                       <CardDescription className="text-xs">
-                        {similarCaseAnalysis.cases?.length} similar cases found
+                        {similarCaseAnalysis?.cases?.length} similar cases found
                       </CardDescription>
                     </div>
                   </div>
@@ -1615,10 +1652,10 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       </span>
                     </div>
                     <div className="text-3xl font-bold text-success mb-2">
-                      {similarCaseAnalysis.approvalRate}%
+                      {similarCaseAnalysis?.approvalRate}%
                     </div>
                     <Progress
-                      value={similarCaseAnalysis.approvalRate}
+                      value={similarCaseAnalysis?.approvalRate}
                       className="h-2 bg-success/20"
                     />
                   </div>
@@ -1630,10 +1667,10 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                       </span>
                     </div>
                     <div className="text-3xl font-bold text-destructive mb-2">
-                      {similarCaseAnalysis.rejectionRate}%
+                      {similarCaseAnalysis?.rejectionRate}%
                     </div>
                     <Progress
-                      value={similarCaseAnalysis.rejectionRate}
+                      value={similarCaseAnalysis?.rejectionRate}
                       className="h-2 bg-destructive/20"
                     />
                   </div>
@@ -1774,6 +1811,12 @@ export function Stage3Approval({ onBack, onComplete }: Stage3ApprovalProps) {
                         </p>
                         <Badge variant="outline" className="text-xs mt-2">
                           {caseItem.category}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs mt-2 ml-1">
+                          {caseItem.metadata.Tranche}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs mt-2 ml-1">
+                          {caseItem.metadata.fid}
                         </Badge>
                       </div>
                     ))}
